@@ -1,221 +1,53 @@
-param([string]$user, [string]$token, [array]$registry, [string]$scope)
-
-function LogMessage($mgs) {
-  Add-Content -Path $logFilePath -Value "$($(Get-Date).ToString()) - $msg" -Force
+$output = ""
+function caPackagesNotPresents {
+  invoke-WriteCheckLogs '@ca/cli non presente nella macchina'
+  Invoke-WriteCheckLogs '@ca/cli-plugin-scarface non presente nella macchina'
+  $output += 'CLIPLUGIN'
+  return $output
 }
 
-function getTokenFileParsed {
-  if (!(Test-Path $tokenFile)) {
-    LogMessage "$tokenFile doesn't exist... creating it..."
-    New-Item $tokenFile -ItemType File -Force | Out-Null
-  }
-  
-  if (-not (Get-content $tokenFile)) {
-    LogMessage "$tokenFile is empty... initializing it..."
-    Set-Content -Path $tokenFile -Value "[]"
-  }
-
-  LogMessage "Read $tokenFile content"
-  return Get-Content -Raw $tokenFile | ConvertFrom-Json
+if (-not (Test-Path "$env:PROGRAMFILES\Ca-Tools")) {
+  invoke-WriteCheckLogs "Ca Tools Folder non presente nella macchina"
+  $output = "FOLDER"
+}
+else {
+  invoke-WriteCheckLogs "Ca Tools Folder presente nella macchina"
 }
 
-# read .npmrc
-function readRegistryFromNpmrc() {
-  $localNpmrcPath = "./.npmrc"
-  if (Test-Path $localNpmrcPath) {
-    LogMessage "Read $localNpmrcPath"
-    $localNpmrc = Get-Content -Path $localNpmrcPath
-    $lineRegistry = $localNpmrc -match "registry=https://devops.codearchitects.com:444/"
-    $newRegistries = @()
-    foreach ($registry in $lineRegistry) {
-      $newRegistries += $registry -replace "registry=", ""
-    }
-    return $newRegistries
-  }
-  else {
-    LogMessage "Missing $localNpmrcPath"
-    Write-Error "No .npmrc in current directory.`n Use -registry flag to login on specific registry or run command into directory with .npmrc file"
-  }
+if (-not (Test-Path "$env:PROGRAMFILES\Ca-Tools\npm-login.ps1")) {
+  invoke-WriteCheckLogs "npm-login.ps1 non presente nella macchina"
+  $output += "FILE"
 }
-
-# get token
-function getToken() {
-  if ($tokenSettingsObject.Count -ge 1) {
-    foreach ($tokenSetting in $tokenSettingsObject) {
-      if ($tokenSetting.registry -eq $registry) {
-        LogMessage "Already logged in registry $registry. Take token from $tokenFile"
-        return @{
-          token         = $tokenSetting.token;
-          alreadyLogged = $true;
-          scope         = $null
-        }
-      }
-      if ($tokenSetting.organization -eq "All") {
-        LogMessage "Take token with `"All Organization`" scope from $tokenFile"
-        return @{
-          token         = $tokenSetting.token;
-          alreadyLogged = $false;
-          scope         = "All"
-        }
-      }
-    }
-    foreach ($tokenSetting in $tokenSettingsObject) {
-      if ($tokenSetting.organization -ne "All") {
-        $organization = $tokenSetting.organization -replace " ", "%20"
-        if ($tokenSetting.registry -match $organization) {
-          LogMessage "Take token with `"$organization`" scope from $tokenFile"
-          return @{
-            token         = $tokenSetting.token;
-            alreadyLogged = $false;
-            scope         = $tokenSetting.organization
-          }
-        }
-      }
-    }
-  }
-  LogMessage "Not found a valid token in $tokenFile"
-  $tokenInput = Read-Host "Token not found. Please provide an Azure DevOps token"
-  LogMessage "Take token from user input"
-  return @{
-    token         = $tokenInput;
-    alreadyLogged = $false;
-    scope         = $null
-  }
+else {
+  invoke-WriteCheckLogs "npm-login.ps1 presente nella macchina"
 }
 
 
-# log
-$logPath = "~/.ca"
-$scriptName = $MyInvocation.MyCommand.Name
-$logfile = "$($scriptName.Substring(0,$scriptname.length-4))_$($(Get-Date -Format yyyymmdd-hhmm).ToString()).log"
-$logFilePath = Join-Path $logPath $logfile
-New-Item $logPath -ItemType Directory -Force | Out-Null
+$npmList = invoke-executeCheckCommand 'npm list -g --depth=0' ""
+if (-not $npmList) { return caPackagesNotPresents }
 
-# init token file
-# Get token File
-$tokenFile = "~/.token.json"
-[Array]$tokenSettingsObject = getTokenFileParsed
+$npmList = $npmList.split(' ').split('@')
 
-# registry
-if (-not $registry) {
-  $registry = readRegistryFromNpmrc
+if (-not ($npmList.Contains('ca/cli'))) { return caPackagesNotPresents }
+
+invoke-WriteCheckLogs '@ca/cli presente nella macchina'
+$caPlugins = (ca plugins).split(' ').split('@')
+
+if ($caPlugins.Contains('ca/cli-plugin-scarface')) {
+  invoke-WriteCheckLogs '@ca/cli-plugin-scarface presente nella macchina'
+}
+else {
+  invoke-WriteCheckLogs '@ca/cli-plugin-scarface non presente nella macchina'
+  $output += 'PLUGIN'
 }
 
-if (-not $registry) {
-  $message = "Missing .npmrc in current directory"
-  LogMessage $message
-  Write-Host $message
-  return
-}
+return $(if ($output) { $output } else { "OK" })
 
-LogMessage "Registry: $registry"
-$registriesSettingLine = @()
-$registriesSettingLineClean = @()
-foreach ($reg in $registry) {
-  $registriesSettingLine += $reg -replace "https:", ""
-  $registriesSettingLineClean += $reg -replace "/registry/", "/"
-}
-
-if (-not $token) {
-  LogMessage "no token provide as parameter"
-  $retval = getToken
-  $token = $retval.token
-  $alreadyLogged = $retval.alreadyLogged
-  $tokenScope = $retval.scope
-}
-
-# save token
-if ($token -and (-not $alreadyLogged)) {
-  # check token type
-  if (-not $tokenScope) {
-    Write-Host "The token scope must be `"All Organization`""
-    LogMessage "Token has `"All Organization`" scope"
-    $tokenScope = "All"
-  }
-
-  $currentDate = $(Get-Date -Format yyyyMMdd-hhmm).ToString()
-  foreach ($reg in $registry) {
-    $tokenSettingsObject += @{
-      user         = $user;
-      token        = $token;
-      organization = $tokenScope;
-      registry     = $reg;
-      date         = $currentDate
-    }
-  }
-  $tokenSettingsJson = $tokenSettingsObject | ConvertTo-Json -Depth 10
-  
-  if ($tokenSettingsJson[0] -ne "[") { $tokenSettingsJson = "[$tokenSettingsJson]" }
-  LogMessage "Convert token settings objetc to json: $tokenSettingsJson"
-  Set-Content -Path $tokenFile -Value $tokenSettingsJson
-  LogMessage "Set token settings in $tokenFile"
-}
-
-# init
-LogMessage "Registry: $registry"
-if (-not $user) {
-  LogMessage "reading user from 'whoami' command"
-  $user = $(whoami).replace("collaboration\", "").replace("collaboration/", "")
-  Write-Host "User from whoami: $user"
-}
-
-LogMessage "User: $user"
-$mail = "$user@codearchitects.com"
-$npmrcPath = "~/.npmrc"
-if (-not (Test-Path $npmrcPath)) {
-  LogMessage "$npmrcPath does not exist... creating it..."
-  New-Item $npmrcPath -Force
-}
-$npmrcContent = Get-Content -Path $npmrcPath -raw
-
-# encoding
-LogMessage "Encode Token in base64"
-$bytes = [System.Text.Encoding]::UTF8.GetBytes($token)
-$encodedToken = [Convert]::ToBase64String($bytes)
-
-for ($i = 0; $i -lt $registriesSettingLine.Count; $i++) {
-  $npmrcPasswordLine = "$($registriesSettingLineClean[$i])`:_password"
-  $npmrcPasswordRegistryLine = "$($registriesSettingLine[$i])`:_password"
-  $npmrcPasswordLineToken = "$npmrcPasswordLine=$encodedToken"
-  $npmrcPasswordRegistryLineToken = "$npmrcPasswordRegistryLine=$encodedToken"
-
-  # set user .npmrc
-  $matchRegistry = $registriesSettingLine[$i] + ":username=$user"
-  if ($npmrcContent -match $matchRegistry) {
-    LogMessage "Registry $registry already exist"
-    $npmrcContent = Get-Content -Path $npmrcPath
-
-    LogMessage "Set new token in $npmrcPath"
-    $registryPasswordLine = $npmrcContent -Match "$npmrcPasswordLine"
-  (Get-Content $npmrcPath).replace($registryPasswordLine, $npmrcPasswordLineToken) | Set-Content $npmrcPath
-
-    LogMessage "Set new token in $npmrcPath"
-    $registryPasswordLine = $npmrcContent -Match "$npmrcPasswordRegistryLine"
-  (Get-Content $npmrcPath).replace($registryPasswordLine, $npmrcPasswordRegistryLineToken) | Set-Content $npmrcPath
-  }
-  else {
-    LogMessage "Set credential for registry $registry"
-    $npmrcRegistryContent = "$($registriesSettingLine[$i])`:username=$user
-$npmrcPasswordRegistryLineToken
-$($registriesSettingLine[$i])`:email=$mail
-$($registriesSettingLineClean[$i])`:username=$user
-$npmrcPasswordLineToken
-$($registriesSettingLineClean[$i])`:email=$mail
-  "
-
-    Add-Content -Path $npmrcPath -Value $npmrcRegistryContent
-  }
-}
-if ($scope) {
-  npm config set $scope":registry" $registry
-}
-
-Write-Host "Logged as $user on $registry."
 # SIG # Begin signature block
-# MIIk2wYJKoZIhvcNAQcCoIIkzDCCJMgCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
+# MIIkyAYJKoZIhvcNAQcCoIIkuTCCJLUCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUkijc7P4GUl3Pcwwy5dOTjLWP
-# Ah6ggh62MIIFOTCCBCGgAwIBAgIQDue4N8WIaRr2ZZle0AzJjDANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUcUopb9E7AkM9EeQgXhDfV1+G
+# I6Oggh6kMIIFOTCCBCGgAwIBAgIQDue4N8WIaRr2ZZle0AzJjDANBgkqhkiG9w0B
 # AQsFADB8MQswCQYDVQQGEwJHQjEbMBkGA1UECBMSR3JlYXRlciBNYW5jaGVzdGVy
 # MRAwDgYDVQQHEwdTYWxmb3JkMRgwFgYDVQQKEw9TZWN0aWdvIExpbWl0ZWQxJDAi
 # BgNVBAMTG1NlY3RpZ28gUlNBIENvZGUgU2lnbmluZyBDQTAeFw0yMTAxMjUwMDAw
@@ -341,72 +173,72 @@ Write-Host "Logged as $user on $registry."
 # ZMzN7iea5aDADHKHwW5NWtMe6vBE5jJvHOsXTpTDeGUgOw9Bqh/poUGd/rG4oGUq
 # NODeqPk85sEwu8CgYyz8XBYAqNDEf+oRnR4GxqZtMl20OAkrSQeq/eww2vGnL8+3
 # /frQo4TZJ577AWZ3uVYQ4SBuxq6x+ba6yDVdM3aO8XwgDCp3rrWiAoa6Ke60WgCx
-# jKvj+QrJVF3UuWp0nr1IrpgwggcHMIIE76ADAgECAhEAjHegAI/00bDGPZ86SION
-# azANBgkqhkiG9w0BAQwFADB9MQswCQYDVQQGEwJHQjEbMBkGA1UECBMSR3JlYXRl
-# ciBNYW5jaGVzdGVyMRAwDgYDVQQHEwdTYWxmb3JkMRgwFgYDVQQKEw9TZWN0aWdv
-# IExpbWl0ZWQxJTAjBgNVBAMTHFNlY3RpZ28gUlNBIFRpbWUgU3RhbXBpbmcgQ0Ew
-# HhcNMjAxMDIzMDAwMDAwWhcNMzIwMTIyMjM1OTU5WjCBhDELMAkGA1UEBhMCR0Ix
-# GzAZBgNVBAgTEkdyZWF0ZXIgTWFuY2hlc3RlcjEQMA4GA1UEBxMHU2FsZm9yZDEY
-# MBYGA1UEChMPU2VjdGlnbyBMaW1pdGVkMSwwKgYDVQQDDCNTZWN0aWdvIFJTQSBU
-# aW1lIFN0YW1waW5nIFNpZ25lciAjMjCCAiIwDQYJKoZIhvcNAQEBBQADggIPADCC
-# AgoCggIBAJGHSyyLwfEeoJ7TB8YBylKwvnl5XQlmBi0vNX27wPsn2kJqWRslTOrv
-# QNaafjLIaoF9tFw+VhCBNToiNoz7+CAph6x00BtivD9khwJf78WA7wYc3F5Ok4e4
-# mt5MB06FzHDFDXvsw9njl+nLGdtWRWzuSyBsyT5s/fCb8Sj4kZmq/FrBmoIgOrfv
-# 59a4JUnCORuHgTnLw7c6zZ9QBB8amaSAAk0dBahV021SgIPmbkilX8GJWGCK7/Gs
-# zYdjGI50y4SHQWljgbz2H6p818FBzq2rdosggNQtlQeNx/ULFx6a5daZaVHHTqad
-# KW/neZMNMmNTrszGKYogwWDG8gIsxPnIIt/5J4Khg1HCvMmCGiGEspe81K9EHJaC
-# IpUqhVSu8f0+SXR0/I6uP6Vy9MNaAapQpYt2lRtm6+/a35Qu2RrrTCd9TAX3+CNd
-# xFfIJgV6/IEjX1QJOCpi1arK3+3PU6sf9kSc1ZlZxVZkW/eOUg9m/Jg/RAYTZG7p
-# 4RVgUKWx7M+46MkLvsWE990Kndq8KWw9Vu2/eGe2W8heFBy5r4Qtd6L3OZU3b05/
-# HMY8BNYxxX7vPehRfnGtJHQbLNz5fKrvwnZJaGLVi/UD3759jg82dUZbk3bEg+6C
-# viyuNxLxvFbD5K1Dw7dmll6UMvqg9quJUPrOoPMIgRrRRKfM97gxAgMBAAGjggF4
-# MIIBdDAfBgNVHSMEGDAWgBQaofhhGSAPw0F3RSiO0TVfBhIEVTAdBgNVHQ4EFgQU
-# aXU3e7udNUJOv1fTmtufAdGu3tAwDgYDVR0PAQH/BAQDAgbAMAwGA1UdEwEB/wQC
-# MAAwFgYDVR0lAQH/BAwwCgYIKwYBBQUHAwgwQAYDVR0gBDkwNzA1BgwrBgEEAbIx
-# AQIBAwgwJTAjBggrBgEFBQcCARYXaHR0cHM6Ly9zZWN0aWdvLmNvbS9DUFMwRAYD
-# VR0fBD0wOzA5oDegNYYzaHR0cDovL2NybC5zZWN0aWdvLmNvbS9TZWN0aWdvUlNB
-# VGltZVN0YW1waW5nQ0EuY3JsMHQGCCsGAQUFBwEBBGgwZjA/BggrBgEFBQcwAoYz
-# aHR0cDovL2NydC5zZWN0aWdvLmNvbS9TZWN0aWdvUlNBVGltZVN0YW1waW5nQ0Eu
-# Y3J0MCMGCCsGAQUFBzABhhdodHRwOi8vb2NzcC5zZWN0aWdvLmNvbTANBgkqhkiG
-# 9w0BAQwFAAOCAgEASgN4kEIz7Hsagwk2M5hVu51ABjBrRWrxlA4ZUP9bJV474TnE
-# W7rplZA3N73f+2Ts5YK3lcxXVXBLTvSoh90ihaZXu7ghJ9SgKjGUigchnoq9pxr1
-# AhXLRFCZjOw+ugN3poICkMIuk6m+ITR1Y7ngLQ/PATfLjaL6uFqarqF6nhOTGVWP
-# CZAu3+qIFxbradbhJb1FCJeA11QgKE/Ke7OzpdIAsGA0ZcTjxcOl5LqFqnpp23Wk
-# PnlomjaLQ6421GFyPA6FYg2gXnDbZC8Bx8GhxySUo7I8brJeotD6qNG4JRwW5sDV
-# f2gaxGUpNSotiLzqrnTWgufAiLjhT3jwXMrAQFzCn9UyHCzaPKw29wZSmqNAMBew
-# KRaZyaq3iEn36AslM7U/ba+fXwpW3xKxw+7OkXfoIBPpXCTH6kQLSuYThBxN6w21
-# uIagMKeLoZ+0LMzAFiPJkeVCA0uAzuRN5ioBPsBehaAkoRdA1dvb55gQpPHqGRuA
-# VPpHieiYgal1wA7f0GiUeaGgno62t0Jmy9nZay9N2N4+Mh4g5OycTUKNncczmYI3
-# RNQmKSZAjngvue76L/Hxj/5QuHjdFJbeHA5wsCqFarFsaOkq5BArbiH903ydN+Qq
-# BtbD8ddo408HeYEIE/6yZF7psTzm0Hgjsgks4iZivzupl1HMx0QygbKvz98xggWP
-# MIIFiwIBATCBkDB8MQswCQYDVQQGEwJHQjEbMBkGA1UECBMSR3JlYXRlciBNYW5j
-# aGVzdGVyMRAwDgYDVQQHEwdTYWxmb3JkMRgwFgYDVQQKEw9TZWN0aWdvIExpbWl0
-# ZWQxJDAiBgNVBAMTG1NlY3RpZ28gUlNBIENvZGUgU2lnbmluZyBDQQIQDue4N8WI
-# aRr2ZZle0AzJjDAJBgUrDgMCGgUAoIGEMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3
-# AgEEMBwGCisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEW
-# BBSdBK5xfYrjZ9+6+ERBViFNhUu53DAkBgorBgEEAYI3AgEMMRYwFKASgBAAQwBB
-# ACAAVABvAG8AbABzMA0GCSqGSIb3DQEBAQUABIIBAHCFv1nV/0Dev85hX0bBRRlr
-# EpW1WXscufrkuyLvnFDVGy2+SxG3LsPM9Y3FDsQnFcloFR8b+xinDkJ7JXQ2uAuC
-# nM2sMg2J0hL8hikonrhmnaBxNRBZjLkn7XJyUFJhhCu69nJx3DAHBh7dH4zraHdr
-# EoYTIihYzsgwak55njqNB5wElDMT2vMdlticARclMdZvdbABG1dvE3UuIhncaFAM
-# ZtyFv6Wb72g0WvXziGbJHBFuhayAkJSKnzyF1Puvgii8ejfDUWP3/2yOXB6Of/yi
-# OypLmnHiv282+jy6E1erAP5a9qCpB7dVsyioOhD05/JNpBljy/EEAm4K5rUw3F2h
-# ggNMMIIDSAYJKoZIhvcNAQkGMYIDOTCCAzUCAQEwgZIwfTELMAkGA1UEBhMCR0Ix
-# GzAZBgNVBAgTEkdyZWF0ZXIgTWFuY2hlc3RlcjEQMA4GA1UEBxMHU2FsZm9yZDEY
-# MBYGA1UEChMPU2VjdGlnbyBMaW1pdGVkMSUwIwYDVQQDExxTZWN0aWdvIFJTQSBU
-# aW1lIFN0YW1waW5nIENBAhEAjHegAI/00bDGPZ86SIONazANBglghkgBZQMEAgIF
-# AKB5MBgGCSqGSIb3DQEJAzELBgkqhkiG9w0BBwEwHAYJKoZIhvcNAQkFMQ8XDTIx
-# MTIyMjEwNDA1NVowPwYJKoZIhvcNAQkEMTIEMKYps8oo9r2i9pUPT9GR/07cdXjf
-# R5DIdFXXCcTSZ5B6TPBaotJN2AUS5eC9e8pWHzANBgkqhkiG9w0BAQEFAASCAgBq
-# k0YZOmyLBBIrvbV8uYeUW0h7exzVqDEI2dcZ30CiQR27nOrGSTeEeeBwu2OOsFgg
-# WTMFLUIubYJOWWuXl9LvSES+RwL139Fe/f1KWa61/ZQ3DNDnJoVhwQiQrnOtQg3s
-# kEaZgc6UZ9YAm/bU7xnPoJtxHjIw72WePi2EsX1aDNmUuPWVXQpu6Z+6uGA5hud7
-# TjLlXqvORp1GowCsEtR7mQwFtvOJYDAaf56ZAUp8pWOSXJjHwPcZpiRAgm0fVzcO
-# tTgwatITsemzHP7evj4gej6fwoGymzVIFdwwvrruziCbTCZiq3eWQeIgeF7SFMD6
-# y9jCXKHdXwW7DpOkGs3z/YWEQTtPbDGa/V/pbag40NnAjNaIDyv5c5XcCtlO4e2p
-# D8mulQ/MN1qogViaUXOhsOjHf5RyCyOtC0E0pcCO4ttKzIIgq9QCgkdC8oLKzO4J
-# sQ323gSGnUB5C6QeyCHoKDeGH+W07tZ2189VRw0o6CSmdlQ6zFhGkTGtKc3TRqrC
-# LfqeT5LIQqTVpMmUVAKUIUePEgV+xulV+CKCqbEaIW4CjveTWBr1w9nqg+b+BkZ8
-# 7FnZBUul4tisHlI0YWtMyq2PAwHRf+3TN4R3oJBQ8OtZ35P5JP0u1K1UC4JJ2OrA
-# QzatuGkk/aqXVypwd3aZ2cwhDwTJDmeb7Mbc1e8yiw==
+# jKvj+QrJVF3UuWp0nr1Irpgwggb1MIIE3aADAgECAhA5TCXhfKBtJ6hl4jvZHSLU
+# MA0GCSqGSIb3DQEBDAUAMH0xCzAJBgNVBAYTAkdCMRswGQYDVQQIExJHcmVhdGVy
+# IE1hbmNoZXN0ZXIxEDAOBgNVBAcTB1NhbGZvcmQxGDAWBgNVBAoTD1NlY3RpZ28g
+# TGltaXRlZDElMCMGA1UEAxMcU2VjdGlnbyBSU0EgVGltZSBTdGFtcGluZyBDQTAe
+# Fw0yMzA1MDMwMDAwMDBaFw0zNDA4MDIyMzU5NTlaMGoxCzAJBgNVBAYTAkdCMRMw
+# EQYDVQQIEwpNYW5jaGVzdGVyMRgwFgYDVQQKEw9TZWN0aWdvIExpbWl0ZWQxLDAq
+# BgNVBAMMI1NlY3RpZ28gUlNBIFRpbWUgU3RhbXBpbmcgU2lnbmVyICM0MIICIjAN
+# BgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEApJMoUkvPJ4d2pCkcmTjA5w7U0Rzs
+# aMsBZOSKzXewcWWCvJ/8i7u7lZj7JRGOWogJZhEUWLK6Ilvm9jLxXS3AeqIO4OBW
+# ZO2h5YEgciBkQWzHwwj6831d7yGawn7XLMO6EZge/NMgCEKzX79/iFgyqzCz2Ix6
+# lkoZE1ys/Oer6RwWLrCwOJVKz4VQq2cDJaG7OOkPb6lampEoEzW5H/M94STIa7GZ
+# 6A3vu03lPYxUA5HQ/C3PVTM4egkcB9Ei4GOGp7790oNzEhSbmkwJRr00vOFLUHty
+# 4Fv9GbsfPGoZe267LUQqvjxMzKyKBJPGV4agczYrgZf6G5t+iIfYUnmJ/m53N9e7
+# UJ/6GCVPE/JefKmxIFopq6NCh3fg9EwCSN1YpVOmo6DtGZZlFSnF7TMwJeaWg4Ga
+# 9mBmkFgHgM1Cdaz7tJHQxd0BQGq2qBDu9o16t551r9OlSxihDJ9XsF4lR5F0zXUS
+# 0Zxv5F4Nm+x1Ju7+0/WSL1KF6NpEUSqizADKh2ZDoxsA76K1lp1irScL8htKycOU
+# QjeIIISoh67DuiNye/hU7/hrJ7CF9adDhdgrOXTbWncC0aT69c2cPcwfrlHQe2zY
+# HS0RQlNxdMLlNaotUhLZJc/w09CRQxLXMn2YbON3Qcj/HyRU726txj5Ve/Fchzpk
+# 8WBLBU/vuS/sCRMCAwEAAaOCAYIwggF+MB8GA1UdIwQYMBaAFBqh+GEZIA/DQXdF
+# KI7RNV8GEgRVMB0GA1UdDgQWBBQDDzHIkSqTvWPz0V1NpDQP0pUBGDAOBgNVHQ8B
+# Af8EBAMCBsAwDAYDVR0TAQH/BAIwADAWBgNVHSUBAf8EDDAKBggrBgEFBQcDCDBK
+# BgNVHSAEQzBBMDUGDCsGAQQBsjEBAgEDCDAlMCMGCCsGAQUFBwIBFhdodHRwczov
+# L3NlY3RpZ28uY29tL0NQUzAIBgZngQwBBAIwRAYDVR0fBD0wOzA5oDegNYYzaHR0
+# cDovL2NybC5zZWN0aWdvLmNvbS9TZWN0aWdvUlNBVGltZVN0YW1waW5nQ0EuY3Js
+# MHQGCCsGAQUFBwEBBGgwZjA/BggrBgEFBQcwAoYzaHR0cDovL2NydC5zZWN0aWdv
+# LmNvbS9TZWN0aWdvUlNBVGltZVN0YW1waW5nQ0EuY3J0MCMGCCsGAQUFBzABhhdo
+# dHRwOi8vb2NzcC5zZWN0aWdvLmNvbTANBgkqhkiG9w0BAQwFAAOCAgEATJtlWPrg
+# ec/vFcMybd4zket3WOLrvctKPHXefpRtwyLHBJXfZWlhEwz2DJ71iSBewYfHAyTK
+# x6XwJt/4+DFlDeDrbVFXpoyEUghGHCrC3vLaikXzvvf2LsR+7fjtaL96VkjpYeWa
+# OXe8vrqRZIh1/12FFjQn0inL/+0t2v++kwzsbaINzMPxbr0hkRojAFKtl9RieCqE
+# eajXPawhj3DDJHk6l/ENo6NbU9irALpY+zWAT18ocWwZXsKDcpCu4MbY8pn76rSS
+# ZXwHfDVEHa1YGGti+95sxAqpbNMhRnDcL411TCPCQdB6ljvDS93NkiZ0dlw3oJok
+# nk5fTtOPD+UTT1lEZUtDZM9I+GdnuU2/zA2xOjDQoT1IrXpl5Ozf4AHwsypKOazB
+# pPmpfTXQMkCgsRkqGCGyyH0FcRpLJzaq4Jgcg3Xnx35LhEPNQ/uQl3YqEqxAwXBb
+# mQpA+oBtlGF7yG65yGdnJFxQjQEg3gf3AdT4LhHNnYPl+MolHEQ9J+WwhkcqCxuE
+# dn17aE+Nt/cTtO2gLe5zD9kQup2ZLHzXdR+PEMSU5n4k5ZVKiIwn1oVmHfmuZHaR
+# 6Ej+yFUK7SnDH944psAU+zI9+KmDYjbIw74Ahxyr+kpCHIkD3PVcfHDZXXhO7p9e
+# IOYJanwrCKNI9RX8BE/fzSEceuX1jhrUuUAxggWOMIIFigIBATCBkDB8MQswCQYD
+# VQQGEwJHQjEbMBkGA1UECBMSR3JlYXRlciBNYW5jaGVzdGVyMRAwDgYDVQQHEwdT
+# YWxmb3JkMRgwFgYDVQQKEw9TZWN0aWdvIExpbWl0ZWQxJDAiBgNVBAMTG1NlY3Rp
+# Z28gUlNBIENvZGUgU2lnbmluZyBDQQIQDue4N8WIaRr2ZZle0AzJjDAJBgUrDgMC
+# GgUAoIGEMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwGCisGAQQBgjcCAQsx
+# DjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBT3CW24VnYtJj+DBNAB36m9
+# AqIzcjAkBgorBgEEAYI3AgEMMRYwFKASgBAAQwBBACAAVABvAG8AbABzMA0GCSqG
+# SIb3DQEBAQUABIIBAIDwRJ2oL02rk4CMXE7ol87EM206wyeh0GiKxGciRI3q12/W
+# 7C4UJEfXS1iWzgegWGaDy4EoVGVbG85KlhP7/QEuftnEf8Jd6IgIFgPJ8k/cDsE4
+# XXxOtRiNfxPnRy1NKYmvw+adqxH9D3EH/pN9LsCKy61dcSU4bBOiDRCSDURn93/S
+# nSou0hMDVm/QwRTKdrwcaTLkJOxDi5uTP0YB2+hYJpnXwdNjlH3SDgdASOes/mv4
+# uHInktiuXLDS6Wdt3R/smN/wNzOjQbs4kCw0bWJ7K5J/k0gRbMoZA5mbu4ki0tm2
+# KXiAf9oCdTpN4cUQ7nS/ZTXn3UQ21t5BDpMC/GihggNLMIIDRwYJKoZIhvcNAQkG
+# MYIDODCCAzQCAQEwgZEwfTELMAkGA1UEBhMCR0IxGzAZBgNVBAgTEkdyZWF0ZXIg
+# TWFuY2hlc3RlcjEQMA4GA1UEBxMHU2FsZm9yZDEYMBYGA1UEChMPU2VjdGlnbyBM
+# aW1pdGVkMSUwIwYDVQQDExxTZWN0aWdvIFJTQSBUaW1lIFN0YW1waW5nIENBAhA5
+# TCXhfKBtJ6hl4jvZHSLUMA0GCWCGSAFlAwQCAgUAoHkwGAYJKoZIhvcNAQkDMQsG
+# CSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMjMwNTI1MTEwNTQ2WjA/BgkqhkiG
+# 9w0BCQQxMgQwiVeQfHs8hlWM77FQUOoy9T1VkNoglNv/YwgLD3JZAsdhWGfqwak2
+# GpEMF4j8Evc0MA0GCSqGSIb3DQEBAQUABIICACd7PjDSYq4/usvb4baCYJ7IM0IU
+# C/BodVx++WQoeFHJ/Wf8ezcJIRyaQxBZtj0WdS69auvWadW2BwCKzHJrc07AirpL
+# eVfzKr8gXvIShLO/HYGR3mX8mD4fZ9rbVdCU7iZE0wpzZBLieQ3AZXZEwumaRBbj
+# k28YJRoLaalb5MZzZ534YErtemjERRKR+PS9qzdU0xpcMZf8NQp22ocd21s9JG0r
+# Yn76AzcYb1xER8RBZcohaQzTdSOJKYx1KFebrUWWfxjzwufjmI4LMnMKgaGniAvr
+# 5EG33x9YvlwSvQb2wFGW47blKcN/3EYje+UvUNy0/MbXQrxxxLqN5qSAzwpzu8Ap
+# YoKUwLtGDjlhFSe8JS4HmwHzQ5xfeDq3fIw/bAGBdHCKyQb1dcIFdYDPdzAzgocl
+# oy3q8a+cBHY4sj5NLpZvImIvGxzNDBHOF9kchAsfMveTVHqP/Db4rBAeMtF73y3i
+# y0lkn6IwhzlYQjlkwNJFKf8VBE/z5GPFM5qVcqHrDQo7mgBj8H/2kGg2IhQMglpR
+# JAIGMOIVpOND8b6o/yvfzxre2ftwMAVTwlsAV83yXlDSDD1Mg6ToGOj5K5eaMeeq
+# 1P3ybJoe9j7CrPEYneD2PfAtJGxzfXdkqQgt+X5oQ88N4SEujlhEzNk6bNMcPYdE
+# 5Mbt3tdNF3m8Wir7
 # SIG # End signature block
