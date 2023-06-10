@@ -38,6 +38,17 @@ $updateTokenButton.FlatStyle = "Flat"
 $updateTokenButton.FlatAppearance.BorderSize = 0;
 $updateTokenButton.FlatAppearance.MouseOverBackColor = "#0463ca"
 
+$logRegistryButton = New-Object System.Windows.Forms.Button
+$logRegistryButton.BackColor = "#19c5ff"
+$logRegistryButton.Text = "Aggiungi registry progetto"
+$logRegistryButton.Size = "145, 50"
+$logRegistryButton.Location = "550, 50"
+$logRegistryButton.Font = 'Century Gothic, 13'
+$logRegistryButton.ForeColor = "#ffffff"
+$logRegistryButton.FlatStyle = "Flat"
+$logRegistryButton.FlatAppearance.BorderSize = 0;
+$logRegistryButton.FlatAppearance.MouseOverBackColor = "#0463ca"
+
 $horizontalLine = New-Object System.Windows.Forms.Label
 $horizontalLine.Text = ""
 $horizontalLine.BorderStyle = "Fixed3D"
@@ -225,7 +236,9 @@ $VMPlatformCheck.Location = "660, 210"
 $VMPlatformCheck.SizeMode = "Zoom"
 $VMPlatformCheck.BackColor = "Transparent"
 
-$tabStart.controls.AddRange(@($welcomeLabel, $startButton, $updateTokenButton, $horizontalLine, $gridConnections, $gridEnvVar, $infoEnvVarutton, $infoProxyButton, $proxyLabel, $proxyCheck, $infoVmButton, $vmLabel, $vmCheck, $infoWSLButton, $WSLLabel, $WSLCheck, $infoVMPlatformButton, $VMPlatformLabel, $VMPlatformCheck))
+$folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
+$folderDialog.Description = "Seleziona una cartella"
+$tabStart.controls.AddRange(@($welcomeLabel, $startButton, $updateTokenButton, $logRegistryButton, $horizontalLine, $gridConnections, $gridEnvVar, $infoEnvVarutton, $infoProxyButton, $proxyLabel, $proxyCheck, $infoVmButton, $vmLabel, $vmCheck, $infoWSLButton, $WSLLabel, $WSLCheck, $infoVMPlatformButton, $VMPlatformLabel, $VMPlatformCheck))
 # $welcomeForm.controls.AddRange(@($logo, $panel, $horizontalLine))
 
 #---------------------------------------------------------[Events]--------------------------------------------------------
@@ -233,6 +246,7 @@ $tabStart.controls.AddRange(@($welcomeLabel, $startButton, $updateTokenButton, $
 $tabStart.Add_VisibleChanged({ tabStart_VisibleChanged })
 $startButton.Add_Click({ startButton_Click })
 $updateTokenButton.Add_Click({ updateTokenButton_Click })
+$logRegistryButton.Add_Click({ logRegistryButton_Click })
 $infoEnvVarutton.Add_Click({ infoEnvVarutton_Click })
 $infoVmButton.Add_Click({ infoVmButton_Click })
 $infoProxyButton.Add_Click({ infoProxyButton_Click })

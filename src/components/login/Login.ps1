@@ -41,32 +41,15 @@ function loginButton_Click {
   
 function invoke-login {
   $errorLabel.Visible = $false
-  
-  # Execute the login
-  # http request setting
-  $password = ConvertTo-SecureString $($TokenTextBox.Text) -AsPlainText -Force
-  $base64AuthInfo = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f $($usernameTextBox.Text), $($TokenTextBox.Text))))
 
-  try {
-    Invoke-RestMethod -TimeoutSec 1000 `
-      -Uri (New-Object System.Uri "https://devops.codearchitects.com:444/Code%20Architects/_apis/packaging/feeds/ca-npm/npm/packages/%40ca%2Fcli/versions/0.1.1/content") `
-      -Method "get" `
-      -Credential (New-Object System.Management.Automation.PSCredential($($usernameTextBox.Text), $password)) `
-      -Headers @{"Accept" = "*/*"; Authorization = ("Basic {0}" -f $base64AuthInfo) } `
-      -ContentType 'application/json'
-  }
-  catch {
-    Write-Host "http request failed, Error: $_.Exception"
-    $errorLabel.Visible = $true
-    return $false
-  }
+  if (-not (invoke-check-npm-credential $usernameTextBox.Text, $TokenTextBox.Text)) { return }
 
   if (-not (Test-Path $npmrcPath)) {
     Write-Host "$npmrcPath does not exist... creating it..."
     New-Item $npmrcPath -Force
   }
 
-  invoke-log-registry $usernameTextBox.text $TokenTextBox.text "ca-app-modeler"
+  invoke-log-registry "ca-npm" $usernameTextBox.text $TokenTextBox.text 
 
   $npmRegistry = "https://devops.codearchitects.com:444/Code%20Architects/_packaging/ca-npm/npm/registry/"
   npm config set '@ca:registry' $npmRegistry

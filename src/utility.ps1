@@ -159,7 +159,30 @@ function invoke-deleteDownload($name, $requirement) {
   invoke-WriteInstallLogs "Cancellazione file $($requirement["DownloadOutfile"]) completata."
 }
 
-function invoke-log-registry($user, $token, $packageName) {
+function invoke-check-npm-credential($user, $token) {
+  # Execute the login
+  # http request setting
+  $password = ConvertTo-SecureString $($token) -AsPlainText -Force
+  $base64AuthInfo = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f $($user), $($token))))
+
+  try {
+    Invoke-RestMethod -TimeoutSec 1000 `
+      -Uri (New-Object System.Uri "https://devops.codearchitects.com:444/Code%20Architects/_apis/packaging/feeds/ca-npm/npm/packages/%40ca%2Fcli/versions/0.1.1/content") `
+      -Method "get" `
+      -Credential (New-Object System.Management.Automation.PSCredential($($user), $password)) `
+      -Headers @{"Accept" = "*/*"; Authorization = ("Basic {0}" -f $base64AuthInfo) } `
+      -ContentType 'application/json'
+    return $true
+  }
+  catch {
+    Write-Host "http request failed, Error: $_.Exception"
+    $errorLabel.Visible = $true
+    return $false
+  }
+  
+}
+
+function invoke-log-registry($packageName, $user, $token) {
   if (-not (Test-Path $npmrcPath)) {
     invoke-modal "$npmrcPath non esiste "
     return

@@ -6,23 +6,6 @@ function caPackagesNotPresents {
   return $output
 }
 
-if (-not (Test-Path "$env:PROGRAMFILES\Ca-Tools")) {
-  invoke-WriteCheckLogs "Ca Tools Folder non presente nella macchina"
-  $output = "FOLDER"
-}
-else {
-  invoke-WriteCheckLogs "Ca Tools Folder presente nella macchina"
-}
-
-if (-not (Test-Path "$env:PROGRAMFILES\Ca-Tools\npm-login.ps1")) {
-  invoke-WriteCheckLogs "npm-login.ps1 non presente nella macchina"
-  $output += "FILE"
-}
-else {
-  invoke-WriteCheckLogs "npm-login.ps1 presente nella macchina"
-}
-
-
 $npmList = invoke-executeCheckCommand 'npm list -g --depth=0' ""
 if (-not $npmList) { return caPackagesNotPresents }
 

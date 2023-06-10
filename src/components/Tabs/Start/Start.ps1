@@ -113,6 +113,28 @@ function updateTokenButton_Click {
   $updateTokenForm.ShowDialog() | Out-Null
 }
 
+function logRegistryButton_Click {
+  $folderDialog.ShowDialog()
+  $folderSelected = $folderDialog.SelectedPath
+  if (-not $folderSelected) { return }
+
+  $projectNpmrcPath = Join-Path $folderSelected ".npmrc.txt"
+  if (-not (Test-Path $projectNpmrcPath)) {
+    Write-Host ".npmrc non trovato"
+    return
+  }
+
+  $npmrcContent = (Get-Content -Path $projectNpmrcPath)
+  if (-not $npmrcContent) {
+    Write-Host ".npmrc sembra essere vuoto"
+    return
+  }
+
+  foreach ($row in $npmrcContent.Split("/")) {
+    if ($row -match "devops.codearchitects")  { invoke-log-registry $row.Split("/")[3] }
+  }
+}
+
 function tabStart_VisibleChanged {
   $gridConnections.ClearSelection()
   $gridEnvVar.ClearSelection()

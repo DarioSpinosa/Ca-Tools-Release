@@ -8,9 +8,29 @@ function  confirmButton_Click {
     invoke-modal "$npmrcPath non esiste "
     return
   }
+
+  $npmrcContent = (Get-Content -Path $npmrcPath)
+  if (-not $npmrcContent) {
+    Write-Host ".npmrc sembra essere vuoto, impossibile recuperare l'username"
+    return
+  }
+
+  $user = ""
+  foreach ($row in $npmrcContent) {
+    if ($row -match ":username=" -and $row -match "devops.codearchitects")  { 
+      $user = "$(($row -split ":username=")[0])" 
+      break
+    }
+  }
+
+  if (-not $user) {
+    Write-Host "Username non trovato all'interno del .nmprc"
+    return
+  }
+
+  if (-not (invoke-check-npm-credential $user $updateTokenTextBox.Text)) { return }
   
   $token = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($updateTokenTextBox.Text))
-  $npmrcContent = (Get-Content -Path "~/.npmrc").Split('')
   $newNpmrcContent = @()
   foreach ($row in $npmrcContent) {
     if ($row -match ":_password=" -and $row -match "devops.codearchitects")  { $row = "$(($row -split ":_password=")[0]):_password=`"$token`"" }
