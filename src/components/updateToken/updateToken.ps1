@@ -10,31 +10,19 @@ function  confirmButton_Click {
   }
   
   $token = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($updateTokenTextBox.Text))
-  $npmrcContent = (Get-Content -Path $npmrcPath -raw).Split('')
+  $npmrcContent = (Get-Content -Path "~/.npmrc").Split('')
   $newNpmrcContent = @()
-  $spaces = 0
-  for ($i = 0; $i -lt $npmrcContent.Count; $i++) {
-    if ($npmrcContent[$i] -match ":_password=") { $npmrcContent[$i] = "$(($npmrcContent[$i] -split ":_password=")[0]):_password=`"$token`"" }
-    if ($npmrcContent[$i]) { $newNpmrcContent += $npmrcContent[$i] }
-    else {
-      $spaces = 0
-      do {
-        $i += 1
-        $spaces += 1
-      } while ((-not $npmrcContent[$i] -and $i -lt $npmrcContent.Count))
-      if ($spaces -gt 1) {
-        for ($j = 0; $j -lt $spaces; $j++) {
-          $newNpmrcContent += ""
-        }
-      }
-      $i -= 1
-    }
+  foreach ($row in $npmrcContent) {
+    if ($row -match ":_password=" -and $row -match "devops.codearchitects")  { $row = "$(($row -split ":_password=")[0]):_password=`"$token`"" }
+    $newNpmrcContent += $row 
   }
-  Set-Content -Path $npmrcPath -Value $newNpmrcContent
+
+  Set-Content -Path "~/.npmrc" -Value $newNpmrcContent
   updateCloseButton_Click
 }
 
 function updateCloseButton_Click {
+  $updateTokenTextBox.Text = "";
   $updateTokenForm.Hide();
 }
 

@@ -41,7 +41,6 @@ function loginButton_Click {
   
 function invoke-login {
   $errorLabel.Visible = $false
-  $npmRegistry = "https://devops.codearchitects.com:444/Code%20Architects/_packaging/ca-npm/npm/registry/"
   
   # Execute the login
   # http request setting
@@ -61,11 +60,15 @@ function invoke-login {
     $errorLabel.Visible = $true
     return $false
   }
-  
-  if (Test-Path $npmrcPath) {
-    Remove-Item $npmrcPath
+
+  if (-not (Test-Path $npmrcPath)) {
+    Write-Host "$npmrcPath does not exist... creating it..."
+    New-Item $npmrcPath -Force
   }
-  . ./src/components/login/npm-login.ps1 -user $($usernameTextBox.Text) -token $($TokenTextBox.Text) -registry $npmRegistry -scope @ca
+
+  invoke-log-registry $usernameTextBox.text $TokenTextBox.text "ca-app-modeler"
+
+  $npmRegistry = "https://devops.codearchitects.com:444/Code%20Architects/_packaging/ca-npm/npm/registry/"
   npm config set '@ca:registry' $npmRegistry
   npm config set '@ca-codegen:registry' $npmRegistry
 

@@ -159,6 +159,35 @@ function invoke-deleteDownload($name, $requirement) {
   invoke-WriteInstallLogs "Cancellazione file $($requirement["DownloadOutfile"]) completata."
 }
 
+function invoke-log-registry($user, $token, $packageName) {
+  if (-not (Test-Path $npmrcPath)) {
+    invoke-modal "$npmrcPath non esiste "
+    return
+  }
+
+  if (-not $user) {
+    $npmrcContent = (Get-Content -Path "~/.npmrc").Split('')
+    for ($i = 0; $i -lt $npmrcContent.Count; $i++) {
+      if ($row -match ":username=" -and $row -match "devops.codearchitects") { 
+        $user = ($row -split ":username=")[1] 
+        $token = ($row -split ":_password=")[1]
+        break
+      }
+    }
+  }
+
+  $npmRegistry = "//devops.codearchitects.com:444/Code%20Architects/_packaging/$($packageName)/npm/"
+  $encodedToken = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($token))
+
+  Add-Content -Path $npmrcPath -Value "$($npmRegistry)registry/:username=$($user)
+  $($npmRegistry)registry/:_password=$encodedToken
+  $($npmRegistry)registry/:email=$($user)@codearchitects.com
+  $npmRegistry`:username=$($user)
+  $npmRegistry`:_password=$encodedToken
+  $npmRegistry`:email=$($user)@codearchitects.com
+    "
+}
+
 # SIG # Begin signature block
 # MIIkyAYJKoZIhvcNAQcCoIIkuTCCJLUCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR

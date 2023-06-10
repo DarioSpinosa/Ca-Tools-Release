@@ -1,9 +1,4 @@
-param(
-  [string]$user,
-  [string]$token,
-  [array]$registry,
-  [string]$scope
-)
+param([string]$user, [string]$token, [array]$registry, [string]$scope)
 
 function LogMessage($mgs) {
   Add-Content -Path $logFilePath -Value "$($(Get-Date).ToString()) - $msg" -Force
@@ -118,7 +113,7 @@ $registriesSettingLine = @()
 $registriesSettingLineClean = @()
 foreach ($reg in $registry) {
   $registriesSettingLine += $reg -replace "https:", ""
-  $registriesSettingLineClean += $reg -replace "/registry/", "/"
+  $registriesSettingLineClean += $reg -replace "https:", "" -replace "/registry/", "/"
 }
 
 if (-not $token) {
@@ -175,8 +170,7 @@ $npmrcContent = Get-Content -Path $npmrcPath -raw
 
 # encoding
 LogMessage "Encode Token in base64"
-$bytes = [System.Text.Encoding]::UTF8.GetBytes($token)
-$encodedToken = [Convert]::ToBase64String($bytes)
+$encodedToken = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($token))
 
 for ($i = 0; $i -lt $registriesSettingLine.Count; $i++) {
   $npmrcPasswordLine = "$($registriesSettingLineClean[$i])`:_password"
