@@ -1,36 +1,20 @@
 function initialize-login {
   if ($type -eq "START") {
-    if (Test-Path $npmrcPath) {
-      $npmrcContent = (Get-Content $npmrcPath)
-      $target = "//devops.codearchitects.com:444/Code%20Architects/_packaging/ca-npm/npm/registry/:"
-      for ($i = 0; $i -lt $npmrcContent.Count; $i++) {
-        if ($npmrcContent[$i].Contains($target)) {
-          $usernameTextBox.Text = $npmrcContent[$i].Split("=")[1]
-          $TokenTextBox.Text = ([Text.Encoding]::Utf8.GetString([Convert]::FromBase64String((($npmrcContent[$i + 1] -split "password=")[1] -replace '"', ''))))
-          if (loginButton_Click) { return }
-          else { break }
-        }
-      }
-    }
+    $credential = invoke-getCredentialsFromNpmrc
+    $usernameTextBox.Text = $credential[0]
+    $tokenTextBox.Text =  $credential[1]
+    if ($usernameTextBox.Text -and $tokenTextBox.Text) { return }
   }
   
   $loginForm.ShowDialog() | Out-Null
 }
 
 function loginButton_Click {
-  <#
-    .SYNOPSIS
-    Login to npm
-    .DESCRIPTION
-    Takes the input inserted by the user and will try to login to npm
-    #>
-  # Check if the fields are empty it won't login
-  if (!($usernameTextBox.Text) -or !($TokenTextBox.Text)) {
+  if (!($usernameTextBox.Text) -or !($tokenTextBox.Text)) {
     invoke-modal  "L'username e la password non possono essere vuoti"
     return $false
   }
     
-  
   if ($type -eq "LOGIN") {
     if (-not (invoke-login)) { return }
   }
@@ -41,20 +25,16 @@ function loginButton_Click {
   
 function invoke-login {
   $errorLabel.Visible = $false
-
-  if (-not (invoke-check-npm-credential $usernameTextBox.Text, $TokenTextBox.Text)) { return }
+  
+  if (-not (invoke-check-npm-credential $usernameTextBox.Text $tokenTextBox.Text)) { return }
 
   if (-not (Test-Path $npmrcPath)) {
-    Write-Host "$npmrcPath does not exist... creating it..."
+    Write-Host "$npmrcPath non trovato, creazione nuovo file in corso..."
     New-Item $npmrcPath -Force
   }
 
-  invoke-log-registry "ca-npm" $usernameTextBox.text $TokenTextBox.text 
-
-  $npmRegistry = "https://devops.codearchitects.com:444/Code%20Architects/_packaging/ca-npm/npm/registry/"
-  npm config set '@ca:registry' $npmRegistry
-  npm config set '@ca-codegen:registry' $npmRegistry
-
+  invoke-log-registry "ca-npm" $usernameTextBox.text ([Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($tokenTextBox.text)))
+  
   if ($type -eq "START") {
     $result = invoke-executeCheckCommand "npm view @ca/cli 2>&1" "Errore dell'esecuzione di npm view @ca/cli 2>&1"
     if (!$result) { return $false }

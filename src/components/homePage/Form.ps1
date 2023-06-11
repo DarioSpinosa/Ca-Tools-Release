@@ -44,19 +44,31 @@ $requirementsTabButton.Font = 'Roboto,10'
 $requirementsTabButton.ForeColor = "#ffffff"
 $requirementsTabButton.FlatStyle = "Flat"
 $requirementsTabButton.FlatAppearance.BorderSize = 0 
+$requirementsTabButton.Enabled = $false
 
-$InstallTabButton = New-Object System.Windows.Forms.Button
-$InstallTabButton.BackColor = "#00ffffff"
-$InstallTabButton.Text = "Installazione`nrequisiti mancanti"
-$InstallTabButton.Size = "150, 75"
-$InstallTabButton.Location = "0, 250"
-$InstallTabButton.Font = 'Roboto,10'
-$InstallTabButton.ForeColor = "#ffffff"
-$InstallTabButton.FlatStyle = "Flat"
-$InstallTabButton.FlatAppearance.BorderSize = 0 
+$installTabButton = New-Object System.Windows.Forms.Button
+$installTabButton.BackColor = "#00ffffff"
+$installTabButton.Text = "Installazione`nrequisiti mancanti"
+$installTabButton.Size = "150, 75"
+$installTabButton.Location = "0, 250"
+$installTabButton.Font = 'Roboto,10'
+$installTabButton.ForeColor = "#ffffff"
+$installTabButton.FlatStyle = "Flat"
+$installTabButton.FlatAppearance.BorderSize = 0 
+$installTabButton.Enabled = $false
 
-$sidebar.Controls.AddRange(@($logo, $startTabButton, $requirementsTabButton, $InstallTabButton))
-$mainForm.Controls.AddRange(@($sidebar, $tabStart, $tabRequirements, $tabInstall))
+$toolsTabButton = New-Object System.Windows.Forms.Button
+$toolsTabButton.BackColor = "#00ffffff"
+$toolsTabButton.Text = "Tools"
+$toolsTabButton.Size = "150, 75"
+$toolsTabButton.Location = "0, 315"
+$toolsTabButton.Font = 'Roboto,10'
+$toolsTabButton.ForeColor = "#ffffff"
+$toolsTabButton.FlatStyle = "Flat"
+$toolsTabButton.FlatAppearance.BorderSize = 0 
+
+$sidebar.Controls.AddRange(@($logo, $startTabButton, $requirementsTabButton, $installTabButton, $toolsTabButton))
+$mainForm.Controls.AddRange(@($sidebar, $tabStart, $tabRequirements, $tabInstall, $tabTools))
 
 #---------------------------------------------------------------------------[EVENTS]---------------------------------------------------------------------------
 $requirementsTabButton.Add_Click({ tabButton_Click $requirementsTabButton })
@@ -67,9 +79,13 @@ $startTabButton.Add_Click({ tabButton_Click $startTabButton })
 $startTabButton.Add_MouseEnter({ Button_MouseEnter $startTabButton })
 $startTabButton.Add_MouseLeave({ Button_MouseLeave $startTabButton })
 
-$InstallTabButton.Add_Click({ tabButton_Click $InstallTabButton })
-$InstallTabButton.Add_MouseEnter({ Button_MouseEnter $InstallTabButton })
-$InstallTabButton.Add_MouseLeave({ Button_MouseLeave $InstallTabButton })
+$installTabButton.Add_Click({ tabButton_Click $installTabButton })
+$installTabButton.Add_MouseEnter({ Button_MouseEnter $installTabButton })
+$installTabButton.Add_MouseLeave({ Button_MouseLeave $installTabButton })
+
+$toolsTabButton.Add_Click({ tabButton_Click $toolsTabButton })
+$toolsTabButton.Add_MouseEnter({ Button_MouseEnter $toolsTabButton })
+$toolsTabButton.Add_MouseLeave({ Button_MouseLeave $toolsTabButton })
 
 # SIG # Begin signature block
 # MIIkyAYJKoZIhvcNAQcCoIIkuTCCJLUCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB

@@ -2,6 +2,7 @@
 function Invoke-installRequirements {
   if (installRequirements) { . .\src\requirements\install\ca-scarface.ps1 }
   $closeButton.Enabled = $true
+  $toolsTabButton.Enabled = $true
 }
 
 function installRequirements {

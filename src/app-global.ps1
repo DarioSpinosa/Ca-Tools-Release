@@ -1,240 +1,32 @@
-#---------------------------------------------------------[Initialisations]--------------------------------------------------------
-Add-Type -AssemblyName System.Windows.Forms
-Add-Type -AssemblyName System.Drawing
+$scarVersion = ""
+$scarConfig = "https://castorybookbloblwebsite.blob.core.windows.net/scar-configs/scarface.config.json"
+$scarConfigPath = "C:\dev\scarface\scarface.config.json"
+$addNodeBuildTools = ""
 
-$tabStart = New-Object System.Windows.Forms.Panel
-$tabStart.Location = "175, 25"
-$tabStart.Size = "800, 500"
-$tabStart.BackColor = "White"
-$tabStart.BorderStyle = "1"
-$tabStart.BackColor = "#00ffffff"
+$npmrcPath = "~\.npmrc"
+$currentDate = (Get-Date -Format yyyyMMdd-HHmmss).ToString()
+$checkLogs = @{}
+$installLogs = @{}
+$logFilePath = "~\.ca\$currentDate\caep.log"
+$requirements = ConvertPSObjectToHashtable (Get-Content ".\requirements.json" | ConvertFrom-Json)
+$checkRequirementsLogFile = "~\.ca\$currentDate\checkLogs.json" 
+$installRequirementsLogfile = "~\.ca\$currentDate\installLogs.json"
+$sortedRequirements = @('WSL', 'Node', 'DotNet', 'Visual Studio', 'Visual Studio Code', 'Git', 'Python', 'NPM', 'Docker', 'Npm Login', 'CAEP')
+$red = [System.Drawing.Color]::FromArgb(255, 236, 84, 84)
+$yellow = [System.Drawing.Color]::FromArgb(255, 255, 223, 0)
+$green = [System.Drawing.Color]::FromArgb(255, 13, 173, 141)
 
-$welcomeLabel = New-Object System.Windows.Forms.Label
-$welcomeLabel.Text = "Benvenuti nel setup del Code Architects Enterprise Platform"
-$welcomeLabel.AutoSize = $true
-$welcomeLabel.Location = "75, 15"
-$welcomeLabel.Font = 'Century Gothic, 17'
-$welcomeLabel.BackColor = "Transparent"
+$newSorted = @()
+foreach ($name in $sortedRequirements) {
+  if ($requirements[$name]["Enable"]) { $newSorted += $name }
+}
+$sortedRequirements = $newSorted
 
-$startButton = New-Object System.Windows.Forms.Button
-$startButton.BackColor = "#19c5ff"
-$startButton.Text = "Inizia"
-$startButton.Size = "125, 40"
-$startButton.Location = "337, 55"
-$startButton.Font = 'Century Gothic, 15'
-$startButton.ForeColor = "#ffffff"
-$startButton.FlatStyle = "Flat"
-$startButton.FlatAppearance.BorderSize = 0;
-$startButton.FlatAppearance.MouseOverBackColor = "#0463ca"
-
-$horizontalLine = New-Object System.Windows.Forms.Label
-$horizontalLine.Text = ""
-$horizontalLine.BorderStyle = "Fixed3D"
-$horizontalLine.AutoSize = $false
-$horizontalLine.Width = $tabStart.ClientSize.Width
-$horizontalLine.Height = 3
-$horizontalLine.Location = "0, 110"
-
-$gridConnections = New-Object System.Windows.Forms.DataGridView
-$gridConnections.Name = "Grid"
-$gridConnections.BorderStyle = 0
-$gridConnections.RowHeadersVisible = $false
-$gridConnections.EnableHeadersVisualStyles = $false
-$gridConnections.BackgroundColor = "#ededed"
-$gridConnections.DefaultCellStyle.BackColor = "#ffffff"
-$gridConnections.DefaultCellStyle.SelectionBackColor = "Transparent"
-$gridConnections.DefaultCellStyle.SelectionForeColor = "Transparent"
-$gridConnections.DefaultCellStyle.Alignment = "MiddleCenter"
-$gridConnections.AdvancedCellBorderStyle.All = "None"
-$gridConnections.AllowUserToResizeRows = $false
-$gridConnections.AutoSizeRowsMode = "AllCells";
-$linkColumn = New-Object System.Windows.Forms.DataGridViewLinkColumn
-$linkColumn.Width = "200";
-$linkColumn.HeaderText = "Connessione a"
-$linkColumn.SortMode = "NotSortable";
-$linkColumn.ActiveLinkColor = "Blue";
-$linkColumn.VisitedLinkColor  = "Blue";
-$linkColumn.DefaultCellStyle.Font = "Century Gothic, 13"
-$gridConnections.Columns.Insert(0, $linkColumn)
-$imageColumn = New-Object System.Windows.Forms.DataGridViewImageColumn
-$imageColumn.Width = "100";
-$imageColumn.HeaderText = "Status"
-$imageColumn.SortMode = "NotSortable";
-$gridConnections.Columns.Insert(1, $imageColumn)
-$gridConnections.AllowUserToResizeColumns = $false;
-$gridConnections.ColumnHeadersBorderStyle = 4
-$gridConnections.ColumnHeadersDefaultCellStyle.Font = "Century Gothic, 15"
-$gridConnections.ColumnHeadersDefaultCellStyle.ForeColor = "#ffffff"
-$gridConnections.ColumnHeadersDefaultCellStyle.BackColor = "#555555"
-$gridConnections.ColumnHeadersDefaultCellStyle.Alignment = "MiddleCenter"
-$gridConnections.ColumnHeadersHeightSizeMode = "DisableResizing"
-$gridConnections.Size = "300, 125"
-$gridConnections.Location = "25, 120"
-$gridConnections.MultiSelect = $false
-$gridConnections.AllowUserToAddRows = $false
-$gridConnections.ReadOnly = $true
-
-$gridEnvVar = New-Object System.Windows.Forms.DataGridView
-$gridEnvVar.Name = "Grid"
-$gridEnvVar.BorderStyle = 0
-$gridEnvVar.RowHeadersVisible = $false
-$gridEnvVar.EnableHeadersVisualStyles = $false
-$gridEnvVar.BackgroundColor = "#ededed"
-$gridEnvVar.DefaultCellStyle.Font = "Century Gothic, 13"
-$gridEnvVar.DefaultCellStyle.BackColor = "#ffffff"
-$gridEnvVar.DefaultCellStyle.SelectionBackColor = "Transparent"
-$gridEnvVar.DefaultCellStyle.SelectionForeColor = "Transparent"
-$gridEnvVar.AdvancedCellBorderStyle.All = "None"
-$gridEnvVar.AllowUserToResizeRows = $false
-$gridEnvVar.AutoSizeRowsMode = "AllCells";
-$gridEnvVar.ColumnCount = 2
-$gridEnvVar.Columns[0].Name = "Variabile d'ambiente";
-$gridEnvVar.Columns[0].Width = "450";
-$gridEnvVar.Columns[0].SortMode = "NotSortable";
-$gridEnvVar.Columns[1].Name = "Stato";
-$gridEnvVar.Columns[1].Width = "135";
-$gridEnvVar.Columns[1].SortMode = "NotSortable";
-$gridEnvVar.AllowUserToResizeColumns = $false;
-$gridEnvVar.ColumnHeadersBorderStyle = 4
-$gridEnvVar.ColumnHeadersDefaultCellStyle.Font = "Century Gothic, 15"
-$gridEnvVar.ColumnHeadersDefaultCellStyle.ForeColor = "#ffffff"
-$gridEnvVar.ColumnHeadersDefaultCellStyle.BackColor = "#555555"
-$gridEnvVar.ColumnHeadersDefaultCellStyle.Alignment = "MiddleCenter"
-$gridEnvVar.ColumnHeadersHeightSizeMode = "DisableResizing"
-$gridEnvVar.Size = "585, 225"
-$gridEnvVar.Location = "25, 255"
-$gridEnvVar.MultiSelect = $false
-$gridEnvVar.AllowUserToAddRows = $false
-$gridEnvVar.ReadOnly = $true
-
-$infoEnvVarutton = New-Object System.Windows.Forms.Button
-$infoEnvVarutton.BackColor = "#19c5ff"
-$infoEnvVarutton.Text = "?"
-$infoEnvVarutton.Size = "25, 25"
-$infoEnvVarutton.Location = "625, 280"
-$infoEnvVarutton.Font = 'Century Gothic, 11'
-$infoEnvVarutton.ForeColor = "#ffffff"
-$infoEnvVarutton.FlatStyle = "Flat"
-$infoEnvVarutton.FlatAppearance.BorderSize = 0;
-$infoEnvVarutton.FlatAppearance.MouseOverBackColor = "#0463ca"
-
-$infoProxyButton = New-Object System.Windows.Forms.Button
-$infoProxyButton.BackColor = "#19c5ff"
-$infoProxyButton.Text = "?"
-$infoProxyButton.Size = "25, 25"
-$infoProxyButton.Location = "365, 130"
-$infoProxyButton.Font = 'Century Gothic, 11'
-$infoProxyButton.ForeColor = "#ffffff"
-$infoProxyButton.FlatStyle = "Flat"
-$infoProxyButton.FlatAppearance.BorderSize = 0;
-$infoProxyButton.FlatAppearance.MouseOverBackColor = "#0463ca"
-
-$proxyLabel = New-Object System.Windows.Forms.Label
-$proxyLabel.Text = "Proxy:"
-$proxyLabel.AutoSize = $true
-$proxyLabel.Location = "400, 130"
-$proxyLabel.Font = 'Century Gothic, 15'
-$proxyLabel.BackColor = "Transparent"
-
-$proxyCheck = New-Object System.Windows.Forms.PictureBox
-$proxyCheck.Size = "30, 24"
-$proxyCheck.Location = "460, 130"
-$proxyCheck.SizeMode = "Zoom"
-$proxyCheck.BackColor = "Transparent"
-
-$infoVmButton = New-Object System.Windows.Forms.Button
-$infoVmButton.BackColor = "#19c5ff"
-$infoVmButton.Text = "?"
-$infoVmButton.Size = "25, 25"
-$infoVmButton.Location = "520, 130"
-$infoVmButton.Font = 'Century Gothic, 11'
-$infoVmButton.ForeColor = "#ffffff"
-$infoVmButton.FlatStyle = "Flat"
-$infoVmButton.FlatAppearance.BorderSize = 0;
-$infoVmButton.FlatAppearance.MouseOverBackColor = "#0463ca"
-
-$vmLabel = New-Object System.Windows.Forms.Label
-$vmLabel.Text = "Virtual machine:"
-$vmLabel.AutoSize = $true
-$vmLabel.Location = "555, 130"
-$vmLabel.Font = 'Century Gothic, 15'
-$vmLabel.BackColor = "Transparent"
-
-$vmCheck = New-Object System.Windows.Forms.PictureBox
-$vmCheck.Size = "30, 24"
-$vmCheck.Location = "720, 130"
-$vmCheck.SizeMode = "Zoom"
-$vmCheck.BackColor = "Transparent"
-
-$infoWSLButton = New-Object System.Windows.Forms.Button
-$infoWSLButton.BackColor = "#19c5ff"
-$infoWSLButton.Text = "?"
-$infoWSLButton.Size = "25, 25"
-$infoWSLButton.Location = "365, 170"
-$infoWSLButton.Font = 'Century Gothic, 11'
-$infoWSLButton.ForeColor = "#ffffff"
-$infoWSLButton.FlatStyle = "Flat"
-$infoWSLButton.FlatAppearance.BorderSize = 0;
-$infoWSLButton.FlatAppearance.MouseOverBackColor = "#0463ca"
-
-$WSLLabel = New-Object System.Windows.Forms.Label
-$WSLLabel.Text = "Windows Subsystem for Linux:"
-$WSLLabel.AutoSize = $true
-$WSLLabel.Location = "400, 170"
-$WSLLabel.Font = 'Century Gothic, 15'
-$WSLLabel.BackColor = "Transparent"
-
-$WSLCheck = New-Object System.Windows.Forms.PictureBox
-$WSLCheck.Size = "30, 24"
-$WSLCheck.Location = "700, 170"
-$WSLCheck.SizeMode = "Zoom"
-$WSLCheck.BackColor = "Transparent"
-
-$infoVMPlatformButton = New-Object System.Windows.Forms.Button
-$infoVMPlatformButton.BackColor = "#19c5ff"
-$infoVMPlatformButton.Text = "?"
-$infoVMPlatformButton.Size = "25, 25"
-$infoVMPlatformButton.Location = "365, 210"
-$infoVMPlatformButton.Font = 'Century Gothic, 11'
-$infoVMPlatformButton.ForeColor = "#ffffff"
-$infoVMPlatformButton.FlatStyle = "Flat"
-$infoVMPlatformButton.FlatAppearance.BorderSize = 0;
-$infoVMPlatformButton.FlatAppearance.MouseOverBackColor = "#0463ca"
-
-$VMPlatformLabel = New-Object System.Windows.Forms.Label
-$VMPlatformLabel.Text = "Virtual Machine Platform:"
-$VMPlatformLabel.AutoSize = $true
-$VMPlatformLabel.Location = "400, 210"
-$VMPlatformLabel.Font = 'Century Gothic, 15'
-$VMPlatformLabel.BackColor = "Transparent"
-
-$VMPlatformCheck = New-Object System.Windows.Forms.PictureBox
-$VMPlatformCheck.Size = "30, 24"
-$VMPlatformCheck.Location = "660, 210"
-$VMPlatformCheck.SizeMode = "Zoom"
-$VMPlatformCheck.BackColor = "Transparent"
-
-$folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
-$folderDialog.Description = "Seleziona una cartella"
-
-$tabStart.controls.AddRange(@($welcomeLabel, $startButton, $horizontalLine, $gridConnections, $gridEnvVar, $infoEnvVarutton, $infoProxyButton, $proxyLabel, $proxyCheck, $infoVmButton, $vmLabel, $vmCheck, $infoWSLButton, $WSLLabel, $WSLCheck, $infoVMPlatformButton, $VMPlatformLabel, $VMPlatformCheck))
-
-#---------------------------------------------------------[Events]--------------------------------------------------------
-
-$tabStart.Add_VisibleChanged({ tabStart_VisibleChanged })
-$startButton.Add_Click({ startButton_Click })
-$infoEnvVarutton.Add_Click({ infoEnvVarutton_Click })
-$infoVmButton.Add_Click({ infoVmButton_Click })
-$infoProxyButton.Add_Click({ infoProxyButton_Click })
-$infoVMPLatformButton.Add_Click({ infoVMPLatformButton_Click })
-$infoWSLButton.Add_Click({ infoWSLButton_Click })
-$gridConnections.Add_CellContentClick({ gridConnections_CellContentClick })
-$gridEnvVar.Add_Click({ gridEnvVar_Click })
 # SIG # Begin signature block
 # MIIkyAYJKoZIhvcNAQcCoIIkuTCCJLUCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUYmSl/5/gTU6FFR+e+4/um1SS
-# MoOggh6kMIIFOTCCBCGgAwIBAgIQDue4N8WIaRr2ZZle0AzJjDANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUgzprVOBk6eCgOoE207WfUDXR
+# HRWggh6kMIIFOTCCBCGgAwIBAgIQDue4N8WIaRr2ZZle0AzJjDANBgkqhkiG9w0B
 # AQsFADB8MQswCQYDVQQGEwJHQjEbMBkGA1UECBMSR3JlYXRlciBNYW5jaGVzdGVy
 # MRAwDgYDVQQHEwdTYWxmb3JkMRgwFgYDVQQKEw9TZWN0aWdvIExpbWl0ZWQxJDAi
 # BgNVBAMTG1NlY3RpZ28gUlNBIENvZGUgU2lnbmluZyBDQTAeFw0yMTAxMjUwMDAw
@@ -402,30 +194,30 @@ $gridEnvVar.Add_Click({ gridEnvVar_Click })
 # YWxmb3JkMRgwFgYDVQQKEw9TZWN0aWdvIExpbWl0ZWQxJDAiBgNVBAMTG1NlY3Rp
 # Z28gUlNBIENvZGUgU2lnbmluZyBDQQIQDue4N8WIaRr2ZZle0AzJjDAJBgUrDgMC
 # GgUAoIGEMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwGCisGAQQBgjcCAQsx
-# DjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRqBf78sxynDynyb6V77xgl
-# anOs3jAkBgorBgEEAYI3AgEMMRYwFKASgBAAQwBBACAAVABvAG8AbABzMA0GCSqG
-# SIb3DQEBAQUABIIBAHXaMXXxl3RiCZsee4WPPKIDTcmBHIFdKC9IHkYHceCvjyMn
-# cIms138bAlk3vC/mEjRMPQTG2P+iM/T/cTLSdEqPkbEZwlOPZCRCjZ2Vr7t84YQI
-# bufO6MOt3m6tum85Drt9ZTVsIA8vAEjRakuwRI4E2p6oTTNWwmUZgPvS05J1yOSF
-# 39kuduJhA+hOgeFGyJbS88RCNQGjuyVz80KkhepJOCgqhwwqmx6HSLgygTqOjhNX
-# KWeQEB0F0ym+5/TUM3eiFmYzCM7RM+bgkI0jshMUkMD1zApE6GdSaeG1NzA++3d8
-# DJ+nnh3w/rtax7hJp+AENZjL3KgCV6iAuR1NfQahggNLMIIDRwYJKoZIhvcNAQkG
+# DjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQxYwgaTM1/Once0WePLZkz
+# 3IFeOzAkBgorBgEEAYI3AgEMMRYwFKASgBAAQwBBACAAVABvAG8AbABzMA0GCSqG
+# SIb3DQEBAQUABIIBAAf1VjQHPjh69bLZw6LXjoQxLC+KoCPGzKo2aGoV/C9gaaGx
+# UFSRo0EEYULVtIMX5U55hw5hwSS3CvKsxAYq0JcqUnipkDxA5v/0V19itvy/TxI+
+# 0W8q9V+0UUEJJplojyYo8BOjbQoOINfF0lgqU2/r9y26VajYZRQg3JNIyIJ7fNrf
+# 98v7HlY99ppBgpeyXz0m+3hsLP+AJTLBlvJzHT8Jnifk15d9lwPdafQM56lhkpEu
+# pr5MwHbjEZTvGuUCWIkmphBeV+QGQjI5I6aDxnIB0JXak9kLqYwWvBavomoE/03Y
+# e6bfugojR/UYTZdwYLVkRworIOQMofpERE4M8ayhggNLMIIDRwYJKoZIhvcNAQkG
 # MYIDODCCAzQCAQEwgZEwfTELMAkGA1UEBhMCR0IxGzAZBgNVBAgTEkdyZWF0ZXIg
 # TWFuY2hlc3RlcjEQMA4GA1UEBxMHU2FsZm9yZDEYMBYGA1UEChMPU2VjdGlnbyBM
 # aW1pdGVkMSUwIwYDVQQDExxTZWN0aWdvIFJTQSBUaW1lIFN0YW1waW5nIENBAhA5
 # TCXhfKBtJ6hl4jvZHSLUMA0GCWCGSAFlAwQCAgUAoHkwGAYJKoZIhvcNAQkDMQsG
-# CSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMjMwNTI1MTEwNTQxWjA/BgkqhkiG
-# 9w0BCQQxMgQwKP50eszUJofTi7G4T6PjcfB8FN13WwThTfUYFezGq+69WNCD1UYu
-# TlJqeo6na/HkMA0GCSqGSIb3DQEBAQUABIICABeUMFc6XgjKMlVHXtGaW8ykNUwZ
-# l3JmT5vaRl/FJu6t+59X8L7A6zjoU/SdwZ+zj7KzV2wFmvg9FABH2ZfR6TR09RnF
-# JebyZL/H774rLwoE8s8ooXyI3/D5ZFGYrxEnBBgvjJLvOPCH7/Tk6AQ6hEiZZ10w
-# vqUd2C+eNucYDn98ovE5aCcuIAKQOcLUkj8OZh/aMqqbZvBCK43EuI4mL7X2c8hg
-# 8v5Pfn2rS4ZncYL7tP0+exwO/Ul3eTi56SLKYSmghoq1WKqJDV7hhdI7knh+k4B9
-# /+VFmeMdOHzX1KzsMR6UnUSWFKmyQDQlz+wlkr8wCywkP2DgMA/XFA1t74jmmUzD
-# 1mhBweQVCtpalDYLlDgdei76JBhVJlFxxXD76nRX/6ZKCpMVSGsXjbvtOEVxwjPm
-# xTwEYJybmdivp1AsqEbt+j46ADTpaGPM6+mzWpSFghaLwdCHsxc/Gv2+KBEz5SLf
-# paGmV/iLU7ynis9VlibMWbWyV5ZbUVQTcZ9oZb0L9d0Yubp5jsxmKPDwbrMx4xiU
-# nPqnPIb/JFaXotN0oWWAsCquQrsTmBup0h6Vqs0yG3m762QbS7AEeZIvRdZpuSVU
-# FC5CCcbCiInExMXHJneCfbFncHFcV9VMSUe576U3gK65oUcOvIrdCuaY6rHLR02K
-# kp5Tvb2AiG6fVHsx
+# CSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMjMwNTI1MTEwNjU0WjA/BgkqhkiG
+# 9w0BCQQxMgQwv9QBM2TWGKZPyp7NMznZtjFahYBnLHUoLQUC9wOdZlYIwgBM4QfA
+# uK5xgoZ9bpTVMA0GCSqGSIb3DQEBAQUABIICAG93UnMhq0Wdd3WEx4MYWxKJgsXh
+# ThXnMHQZXMOdVW4sSwXdPiXHe5YCDQoXCIv/hc7EUMipOKLyEnFW//4CyBzfopl0
+# bQL6WOJ9CH3mmqTfvR53RnMgI4LDhXyqhbwM4n8/Kv+lgMlkod+fF72Jo7s3bCEB
+# v7c4RTStoS/I7qSJZPipdKrvQ2OG/OgR0VSlXonn8bOq8zsEOp6xLPxibDsOR4bn
+# g6+y5eO8+GFbKI+5u59NO5oJDTtlLN4rmOF0P4LT8eqetP5P88QWHKO0yDDnq1Q4
+# gnz+vSn98tmlPztMOagMrMyrpaZpbf1HKv0lHQBBaitpFmEF24CNFajdAcQRgodU
+# sTwTEToBNzhIHOkcrmdWrmSbsDY36V5sS3SpHWmEeR0c8i7n/mFy1BUfedUaq229
+# 7ByBqnHHCctJ9Kdm6471GPyHWJI6ZoV3U2BNDPSqsWG3T5ncvP2XJy3mmCnX2/3m
+# bz8VdymgUn/PgCiyXF9ag5cJsTzYD+i2VvVhZ8TVX0NWUmi68F/BCiSRMhfwOvc+
+# m0qifMeRhfumDIDliD1ml458LhbZDNQWEukvbOyei5XFnTIJBHNqzBQrM2/c1Pkq
+# ZV6Y5pW3OKbuuzJmbtlnbo5qIkwRwYSG6ECWqu/A+VdN2U50PGKoJ2qX0V/0qcJA
+# nRn8DHIr5vARlB9L
 # SIG # End signature block

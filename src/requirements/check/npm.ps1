@@ -2,32 +2,32 @@ $output = ""
 $npmVersion = invoke-executeCheckCommand "npm --version" "Npm non presente nella macchina"
 if (-not $npmVersion) { $output = 'KO' }
 else {
-    $npmVersion = $npmVersion.split(".")
-    $npmVersion = [Version]::new($npmVersion[0], $npmVersion[1], $npmVersion[2])
+  $npmVersion = $npmVersion.split(".")
+  $npmVersion = [Version]::new($npmVersion[0], $npmVersion[1], $npmVersion[2])
 
-    $minVersion = $requirement["MinVersion"].split(".")
-    $minVersion = [Version]::new($minVersion[0], $minVersion[1], $minVersion[2])
+  $minVersion = $requirement["MinVersion"].split(".")
+  $minVersion = [Version]::new($minVersion[0], $minVersion[1], $minVersion[2])
 
-    $maxVersion = $requirement["MaxVersion"].split(".")
-    $maxVersion = [Version]::new($maxVersion[0], $maxVersion[1], $maxVersion[2])
+  $maxVersion = $requirement["MaxVersion"].split(".")
+  $maxVersion = [Version]::new($maxVersion[0], $maxVersion[1], $maxVersion[2])
 
-    if (($npmVersion -lt $minVersion) -or ($npmVersion -gt $maxVersion)) {
-        invoke-WriteCheckLogs "La versione rilevata di Npm e' la $npmVersion non rispetta i requisiti\r\nMin Version: $minVersion. Max Version: $maxVersion"
-        $output = "KO"
-    }
+  if (($npmVersion -lt $minVersion) -or ($npmVersion -gt $maxVersion)) {
+    invoke-WriteCheckLogs "La versione rilevata di Npm e' la $npmVersion non rispetta i requisiti\r\nMin Version: $minVersion. Max Version: $maxVersion"
+    $output = "KO"
+  }
 }
 
 if ($requirement["Proxy"] -ne "KO") {
-    $foundProxy = $false
-    $contentNpmrc = Get-Content $npmrcPath
-    foreach ($row in $contentNpmrc) {
-        if ($row.Contains("proxy")) {
-            $foundProxy = $true
-            break
-        }
+  $foundProxy = $false
+  $contentNpmrc = Get-Content $npmrcPath
+  foreach ($row in $contentNpmrc) {
+    if ($row.Contains("proxy")) {
+      $foundProxy = $true
+      break
     }
-    if (-not $foundProxy) { $output += "PROXY" }
-    if ($requirement["Proxy"] -eq "TCP") { $output += "TCP" }
+  }
+  if (-not $foundProxy) { $output += "PROXY" }
+  if ($requirement["Proxy"] -eq "TCP") { $output += "TCP" }
 }
 
 if ($output) { return $output }

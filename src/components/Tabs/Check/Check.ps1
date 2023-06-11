@@ -4,7 +4,7 @@ Add-Type -Assemblyname System.Drawing
 function Invoke-CheckRequirements {
   $debugPreference = 'Continue'
   $verbosePreference = 'Continue'
-  $InformationPreference = 'Continue'
+  $informationPreference = 'Continue'
   Start-Transcript $logFilePath
 
   # Unlocks all the scripts needed for the Install
@@ -27,32 +27,7 @@ function Invoke-CheckRequirements {
   $installButton.Enabled = $true
 }
 
-function invoke-DownloadScarConfigJson() {
-  <#
-.SYNOPSIS
-Download scarface.config.json
-.DESCRIPTION
-Download scarface.config.json
-#>
-
-  if (Test-Path $scarConfigPath) { Remove-Item -Path $scarConfigPath -Force }
-  New-Item -Path $scarConfigPath -Force | Out-Null
-
-  Write-Host "Download $scarConfig in corso"
-  $scarConfigObj = (Invoke-WebRequest -Uri $scarConfig -UseBasicParsing)
-  Set-Content -Path $scarConfigPath -Value $scarConfigObj
-  Write-Host "Download $scarConfig terminato"
-  return ($scarConfigObj | ConvertFrom-Json).overrideRequirement
-}
-
 function Invoke-OverrideRequirement($override) {
-  <#
-.SYNOPSIS
-Override custom json to Requirements
-.DESCRIPTION
-Override custom json to Requirements
-#>
-
   if (!$override) { return $false }
 
   Write-Host "Download di $override in corso..."
@@ -124,7 +99,8 @@ function writeOutputRequirements($name) {
 
 function installButton_Click {
   $installButton.Enabled = $false
-  tabButton_Click($InstallTabButton)
+  tabButton_Click($installTabButton)
+  $installTabButton.Enabled = $true
   Invoke-installRequirements
 }
 

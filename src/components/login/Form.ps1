@@ -38,22 +38,22 @@ $usernameWarning.Font = 'Century Gothic, 8, style=Bold'
 $usernameWarning.BackColor = "Transparent"
 $usernameWarning.ForeColor = "#ffffff"
 
-$TokenLabel = New-Object System.Windows.Forms.Label
-$TokenLabel.Text = "Token:"
-$TokenLabel.AutoSize = $true
-$TokenLabel.Size = '25, 20'
-$TokenLabel.Height = 20
-$TokenLabel.Location = '140, 18'
-$TokenLabel.Font = 'Century Gothic, 10, style=Bold'
-$TokenLabel.BackColor = "Transparent"
-$TokenLabel.ForeColor = "#ffffff"
+$tokenLabel = New-Object System.Windows.Forms.Label
+$tokenLabel.Text = "Token:"
+$tokenLabel.AutoSize = $true
+$tokenLabel.Size = '25, 20'
+$tokenLabel.Height = 20
+$tokenLabel.Location = '140, 18'
+$tokenLabel.Font = 'Century Gothic, 10, style=Bold'
+$tokenLabel.BackColor = "Transparent"
+$tokenLabel.ForeColor = "#ffffff"
 
-$TokenTextBox = New-Object System.Windows.Forms.TextBox
-$TokenTextBox.Multiline = $false
-$TokenTextBox.Size = '180, 20'
-$TokenTextBox.Location = '140, 40'
-$TokenTextBox.Font = 'Century Gothic, 10'
-$TokenTextBox.TabStop = $false
+$tokenTextBox = New-Object System.Windows.Forms.TextBox
+$tokenTextBox.Multiline = $false
+$tokenTextBox.Size = '180, 20'
+$tokenTextBox.Location = '140, 40'
+$tokenTextBox.Font = 'Century Gothic, 10'
+$tokenTextBox.TabStop = $false
 
 $errorLabel = New-Object System.Windows.Forms.Label
 $errorLabel.Text = "Password o Token Errati"
@@ -76,7 +76,7 @@ $loginButton.FlatStyle = "Flat"
 $loginButton.FlatAppearance.BorderSize = 0;
 $loginButton.FlatAppearance.MouseOverBackColor = "#0463ca"
 
-$loginForm.Controls.AddRange(@($usernameLabel, $usernameTextBox, $usernameWarning, $TokenLabel, $TokenTextBox, $errorLabel, $loginButton))
+$loginForm.Controls.AddRange(@($usernameLabel, $usernameTextBox, $usernameWarning, $tokenLabel, $tokenTextBox, $errorLabel, $loginButton))
 
 $loginButton.Add_Click({ loginButton_Click })
 

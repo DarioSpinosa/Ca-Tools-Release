@@ -44,15 +44,16 @@ function invoke-setColor($grid, $color){
 . .\src\components\Tabs\Start\Start.ps1
 . .\src\components\modal\Modal.ps1
 . .\src\components\login\Login.ps1
-. .\src\components\updateToken\updateToken.ps1
 . .\src\components\Tabs\Check\Check.ps1
 . .\src\components\Tabs\Install\Install.ps1
+. .\src\components\Tabs\Tools\Tools.ps1
 . .\src\components\homePage\Form.ps1
 
 $buttonTabs = @{}
 $buttonTabs.Add($startTabButton, $tabStart)
 $buttonTabs.Add($requirementsTabButton, $tabRequirements)
-$buttonTabs.Add($InstallTabButton, $tabInstall)
+$buttonTabs.Add($installTabButton, $tabInstall)
+$buttonTabs.Add($toolsTabButton, $tabTools)
 
 # SIG # Begin signature block
 # MIIkyAYJKoZIhvcNAQcCoIIkuTCCJLUCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB

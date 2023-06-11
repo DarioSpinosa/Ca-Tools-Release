@@ -2,6 +2,7 @@
 
 function startButton_Click {
   $startButton.Enabled = $false
+  $toolsTabButton.Enabled = $false
   
   # Check if the user opened PowerShell as Admin, if not then stop the Install, otherwise check the requirements
   if (-not ((invoke-executeCommand "Get-LocalGroupMember -Group Administrators") -like "*$(whoami)*")) {
@@ -105,34 +106,9 @@ function startButton_Click {
   initialize-login
   
   New-Item -Path "~\.ca\$currentDate" -ItemType Directory
+  $requirementsTabButton.Enabled = $true
   tabButton_Click($requirementsTabButton)
   Invoke-CheckRequirements
-}
-
-function updateTokenButton_Click {
-  $updateTokenForm.ShowDialog() | Out-Null
-}
-
-function logRegistryButton_Click {
-  $folderDialog.ShowDialog()
-  $folderSelected = $folderDialog.SelectedPath
-  if (-not $folderSelected) { return }
-
-  $projectNpmrcPath = Join-Path $folderSelected ".npmrc.txt"
-  if (-not (Test-Path $projectNpmrcPath)) {
-    Write-Host ".npmrc non trovato"
-    return
-  }
-
-  $npmrcContent = (Get-Content -Path $projectNpmrcPath)
-  if (-not $npmrcContent) {
-    Write-Host ".npmrc sembra essere vuoto"
-    return
-  }
-
-  foreach ($row in $npmrcContent.Split("/")) {
-    if ($row -match "devops.codearchitects")  { invoke-log-registry $row.Split("/")[3] }
-  }
 }
 
 function tabStart_VisibleChanged {

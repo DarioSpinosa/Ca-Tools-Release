@@ -1,11 +1,4 @@
-$scarConfigObj = Get-Content $scarConfigPath | ConvertFrom-Json
-$scarConfigObj.token = $usernameTextBox.Text
-$scarConfigObj.user = $TokenTextBox.Text
-if ($scarVersion) {
-  $scarConfigObj.version = $scarVersion
-}
-
-$scarConfigObj | ConvertTo-Json | Set-Content -Path $scarConfigPath
+invoke-setCredentialScarfaceConfig $usernameTextBox.Text $tokenTextBox.Text
 
 $killCheck = {
   while ($true) {

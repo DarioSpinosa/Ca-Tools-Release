@@ -122,22 +122,23 @@ function invoke-Dependencies($type, $requirement) {
 }
 
 function New-CommandString($string) {
-  <#
-  .SYNOPSIS
-  Resolve the Requirement's command, subsituting the variables inside the string with his concrete value
-  .DESCRIPTION
-  Resolves the Requirement's command, subsituting the variables inside the string with his concrete value
-  #>
   $stringWithValue = $string
   do {
     Invoke-Expression("Set-Variable -name StringWithValue -Value `"$stringWithValue`"")
-
-    Write-Host "$stringWithValue"
-
   } while ($stringWithValue -like '*$(*)*')
   return $stringWithValue
 }
 
+function invoke-DownloadScarConfigJson() {
+  if (Test-Path $scarConfigPath) { Remove-Item -Path $scarConfigPath -Force }
+  New-Item -Path $scarConfigPath -Force | Out-Null
+
+  Write-Host "Download $scarConfig in corso"
+  $scarConfigObj = (Invoke-WebRequest -Uri $scarConfig -UseBasicParsing)
+  Set-Content -Path $scarConfigPath -Value $scarConfigObj
+  Write-Host "Download $scarConfig terminato"
+  return ($scarConfigObj | ConvertFrom-Json).overrideRequirement
+}
 
 function invoke-download($name, $requirement) {
   try {
@@ -162,14 +163,13 @@ function invoke-deleteDownload($name, $requirement) {
 function invoke-check-npm-credential($user, $token) {
   # Execute the login
   # http request setting
-  $password = ConvertTo-SecureString $($token) -AsPlainText -Force
-  $base64AuthInfo = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f $($user), $($token))))
-
+  $password = ConvertTo-SecureString $token -AsPlainText -Force
+  $base64AuthInfo = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f $user, $token)))
   try {
     Invoke-RestMethod -TimeoutSec 1000 `
       -Uri (New-Object System.Uri "https://devops.codearchitects.com:444/Code%20Architects/_apis/packaging/feeds/ca-npm/npm/packages/%40ca%2Fcli/versions/0.1.1/content") `
       -Method "get" `
-      -Credential (New-Object System.Management.Automation.PSCredential($($user), $password)) `
+      -Credential (New-Object System.Management.Automation.PSCredential($user, $password)) `
       -Headers @{"Accept" = "*/*"; Authorization = ("Basic {0}" -f $base64AuthInfo) } `
       -ContentType 'application/json'
     return $true
@@ -179,7 +179,6 @@ function invoke-check-npm-credential($user, $token) {
     $errorLabel.Visible = $true
     return $false
   }
-  
 }
 
 function invoke-log-registry($packageName, $user, $token) {
@@ -189,26 +188,63 @@ function invoke-log-registry($packageName, $user, $token) {
   }
 
   if (-not $user) {
-    $npmrcContent = (Get-Content -Path "~/.npmrc").Split('')
-    for ($i = 0; $i -lt $npmrcContent.Count; $i++) {
-      if ($row -match ":username=" -and $row -match "devops.codearchitects") { 
-        $user = ($row -split ":username=")[1] 
-        $token = ($row -split ":_password=")[1]
-        break
-      }
-    }
+    $credential = invoke-getCredentialsFromNpmrc
+    $user = $credential[0]
+    $token = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($credential[1]))
+  }
+
+  if (-not $user) {
+    invoke-modal "Username non trovato all'interno del .nmprc"
+    return
   }
 
   $npmRegistry = "//devops.codearchitects.com:444/Code%20Architects/_packaging/$($packageName)/npm/"
-  $encodedToken = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($token))
 
-  Add-Content -Path $npmrcPath -Value "$($npmRegistry)registry/:username=$($user)
-  $($npmRegistry)registry/:_password=$encodedToken
-  $($npmRegistry)registry/:email=$($user)@codearchitects.com
-  $npmRegistry`:username=$($user)
-  $npmRegistry`:_password=$encodedToken
-  $npmRegistry`:email=$($user)@codearchitects.com
-    "
+  Add-Content -Path $npmrcPath -Value "`n$($npmRegistry)registry/:username=$($user)
+$($npmRegistry)registry/:_password=$token
+$($npmRegistry)registry/:email=$($user)@codearchitects.com
+$npmRegistry`:username=$($user)
+$npmRegistry`:_password=$token
+$npmRegistry`:email=$($user)@codearchitects.com
+  "
+
+  $npmRegistry = "https://devops.codearchitects.com:444/Code%20Architects/_packaging/ca-npm/npm/registry/"
+  npm config set '@ca:registry' $npmRegistry
+  npm config set '@ca-codegen:registry' $npmRegistry
+
+}
+
+function invoke-getCredentialsFromNpmrc {  
+  if (-not (Test-Path $npmrcPath)) {
+    Write-Host "$npmrcPath non esiste "
+    return @("", "")
+  }
+
+  $npmrcContent = (Get-Content $npmrcPath)
+  if (-not $npmrcContent) {
+    Write-Host ".npmrc sembra essere vuoto, impossibile recuperare le credenziali"
+    return @("", "")
+  }
+
+  $user = ""
+  $token = ""
+  for ($i = 0; $i -lt $npmrcContent.Count; $i++) {
+    if ($npmrcContent[$i] -match "devops.codearchitects") {
+      $user = ($npmrcContent[$i] -split ":username=")[1] 
+      $token = ([Text.Encoding]::Utf8.GetString([Convert]::FromBase64String((($npmrcContent[$i + 1] -split "password=")[1] -replace '"', ''))))
+      break
+    }
+  }
+
+  return @($user, $token)
+}
+
+function invoke-setCredentialScarfaceConfig($user, $token) {
+  $scarConfigObj = Get-Content $scarConfigPath | ConvertFrom-Json
+  $scarConfigObj.user = $user
+  $scarConfigObj.token = $token
+  if ($scarVersion) { $scarConfigObj.version = $scarVersion }
+  $scarConfigObj | ConvertTo-Json | Set-Content -Path $scarConfigPath
 }
 
 # SIG # Begin signature block
