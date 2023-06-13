@@ -103,6 +103,7 @@ function startButton_Click {
   }
 
   #inserimento Credenziali login npm
+  $type = "START"
   initialize-login
   
   New-Item -Path "~\.ca\$currentDate" -ItemType Directory

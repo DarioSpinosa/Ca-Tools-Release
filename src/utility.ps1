@@ -211,7 +211,6 @@ $npmRegistry`:email=$($user)@codearchitects.com
   $npmRegistry = "https://devops.codearchitects.com:444/Code%20Architects/_packaging/ca-npm/npm/registry/"
   npm config set '@ca:registry' $npmRegistry
   npm config set '@ca-codegen:registry' $npmRegistry
-
 }
 
 function invoke-getCredentialsFromNpmrc {  

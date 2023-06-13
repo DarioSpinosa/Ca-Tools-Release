@@ -3,7 +3,7 @@ function logRegistryButton_Click {
   $folderSelected = $folderDialog.SelectedPath
   if (-not $folderSelected) { return }
   
-  $projectNpmrcPath = Join-Path $folderSelected ".npmrc.txt"
+  $projectNpmrcPath = Join-Path $folderSelected ".npmrc"
   if (-not (Test-Path $projectNpmrcPath)) {
     invoke-modal ".npmrc non trovato"
     return
@@ -16,9 +16,27 @@ function logRegistryButton_Click {
   }
   
   foreach ($row in $npmrcContent) {
-    if ($row -match "devops.codearchitects") { invoke-log-registry $row.Split("/")[3] }
+    if ($row -match "devops.codearchitects") { invoke-log-registry $row.Split("/")[5] }
   }
 
+  $projectNuGetPath = Join-Path $folderSelected "server/NuGet.config"
+  if (-not (Test-Path $projectNuGetPath)) {
+    invoke-modal "nuGet non trovato"
+    return
+  }
+  
+  [xml]$nuGetContent = (Get-Content $projectNuGetPath)
+  if (-not $nuGetContent) {
+    invoke-modal "nuGet sembra essere vuoto"
+    return
+  }
+
+  $credentials = invoke-getCredentialsFromNpmrc
+  $nodes = ($nuGetContent.SelectNodes("/configuration/packageSources/*") | Where-Object { $_.key -ne 'nuget.org' })
+  foreach ($node in $nodes) {
+    dotnet nuget add source "$($node.value)" --valid-authentication-types basic -u "$($credentials[0])" -p "$($credentials[1])" --store-password-in-clear-text -n "$($node.key)"
+  }
+  
   invoke-modal "Login sui registry di progetto completato"
 }
 
@@ -35,7 +53,10 @@ function updateTokenButton_Click {
     return
   }
 
-  if (-not (invoke-check-npm-credential $user $updateTokenText.Text)) { return }
+  if (-not (invoke-check-npm-credential $user $updateTokenText.Text)) { 
+    invoke-modal "Le credenziali risultano errate$([System.Environment]::NewLine)Utente: $user$([System.Environment]::NewLine)Token: $($updateTokenText.Text)"
+    return 
+  }
   
   $token = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($updateTokenText.Text))
   $npmrcContent = (Get-Content $npmrcPath)
@@ -48,16 +69,35 @@ function updateTokenButton_Click {
   Set-Content -Path $npmrcPath -Value $newNpmrcContent
 
   [xml]$nuGetFile = Get-Content "~/AppData/Roaming/NuGet/nuget.config"
-  ($nuGetFile.SelectNodes("/configuration/packageSourceCredentials/back-office-nuget/add") | Where-Object { $_.key -eq 'ClearTextPassword' }).value = $updateTokenText.Text
+  $nugetRegistries = ($nuGetFile.SelectNodes("/configuration/packageSources/*") | Where-Object { $_.value.Contains("devops.codearchitects")}).key
+  Write-Host $nugetRegistries
+  foreach ($registry in $nugetRegistries) { 
+   ($nuGetFile.SelectNodes("/configuration/packageSourceCredentials/$registry/add") | Where-Object { $_.key -eq 'ClearTextPassword' }).value = $updateTokenText.Text
+  }
   $nuGetFile.save("$env:USERPROFILE/AppData/Roaming/NuGet/nuget.config")
 
   invoke-modal "Token aggiornato con successo"
 }
 
+function repairNpmrcButton_Click {
+  if (Test-Path $npmrcPath) {
+    Remove-Item -Path $npmrcPath -Force
+    New-Item -Path $npmrcPath -Force | Out-Null
+  }
+
+  $loginForm.ShowDialog() | Out-Null
+  invoke-modal ".npmrc rigenerato con successo."
+}
+
 function downloadScarfaceConfig_Click {
   invoke-DownloadScarConfigJson
   $credentials = invoke-getCredentialsFromNpmrc
+  if (-not ($credentials[0] -and $credentials[1])) { 
+    invoke-modal "Impossibile completare l'operazione.$([System.Environment]::NewLine).npmrc non trovato o corrotto.$([System.Environment]::NewLine)Rigenerare .nmprc e poi riprovare" 
+    return
+  }
   invoke-setCredentialScarfaceConfig $credentials[0] $credentials[1]
+  invoke-modal "File scaricato con successo$([System.Environment]::NewLine)Location:$scarConfigPath"
 }
 
 . .\src\components\Tabs\Tools\Form.ps1

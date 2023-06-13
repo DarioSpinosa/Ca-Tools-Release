@@ -15,7 +15,7 @@ function loginButton_Click {
     return $false
   }
     
-  if ($type -eq "LOGIN") {
+  if ($type -ne "START") {
     if (-not (invoke-login)) { return }
   }
 
@@ -44,7 +44,7 @@ function invoke-login {
     foreach ($item in $result) { invoke-WriteCheckLogs $item }
     if ($checkLogs["Npm Login"]["Result"].Contains("ERR")) { return $false}
   }
-  else {
+  elseif ($type -eq "LOGIN") {
     $result = invoke-executeInstallCommand "npm view @ca/cli 2>&1" "Errore dell'esecuzione di npm view @ca/cli 2>&1"
     if (!$result) { return $false }
     $result += invoke-executeInstallCommand "npm view @ca-codegen/core 2>&1" "Errore dell'esecuzione di npm view @ca-codegen/core 2>&1"
@@ -58,7 +58,7 @@ function invoke-login {
 }
 
 . .\src\components\login\Form.ps1
-$type = "START"
+$type = "REPAIR"
 
 # SIG # Begin signature block
 # MIIkyAYJKoZIhvcNAQcCoIIkuTCCJLUCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
