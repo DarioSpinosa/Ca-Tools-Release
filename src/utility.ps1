@@ -24,6 +24,30 @@ function ConvertPSObjectToHashtable($inputObject) {
   }
 }
 
+function invoke-loadConfiguration($file) {
+  if (-not $file) { $file = "default" }
+  $pathConfiguration = ".\configuration\$($file).json"
+
+  if (-not (Test-Path $pathConfiguration)) { 
+    return "$pathConfiguration non trovato"
+  }
+
+  $configuration = ConvertPSObjectToHashtable (Get-Content $pathConfiguration | ConvertFrom-Json)
+  $tempRequirements = $configuration["Requirements"]
+    
+  $tempSortedRequirements = @('WSL', 'Node', 'DotNet', 'Visual Studio', 'Visual Studio Code', 'Git', 'Python', 'NPM', 'Docker', 'Npm Login', 'CAEP')
+  $newSorted = @()
+  foreach ($name in $tempSortedRequirements) {
+    if ($tempRequirements[$name]["Enable"]) { $newSorted += $name }
+  }
+
+  return [PSCustomObject]@{
+    ScarConfig = $configuration["ScarConfig"]
+    Requirements = $tempRequirements
+    SortedRequirements = $newSorted
+  }
+}
+
 function invoke-CreateLogs($hashLogs) {
   foreach ($name in $sortedRequirements) {
     $hashLogs.Add($name, @{})

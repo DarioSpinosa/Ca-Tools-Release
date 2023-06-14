@@ -1,5 +1,6 @@
 #Requires -Version 5.1
 Add-Type -AssemblyName System.Drawing
+. .\src\utility.ps1
 . .\src\app-global.ps1
 . .\src\components\homePage\HomePage.ps1
 invoke-initialize
