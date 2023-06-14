@@ -1,32 +1,290 @@
-$scarVersion = ""
-$scarConfig = "https://castorybookbloblwebsite.blob.core.windows.net/scar-configs/scarface.config.json"
-$scarConfigPath = "C:\dev\scarface\scarface.config.json"
-$addNodeBuildTools = ""
+function invoke-loadConfiguration($file) {
+  if (-not $file) { $file = "default" }
+  $pathConfiguration = ".\configuration\$($file).json"
+  if (-not (Test-Path $pathConfiguration)) { 
+    return "$pathConfiguration non trovato"
+  }
 
-$npmrcPath = "~\.npmrc"
-$currentDate = (Get-Date -Format yyyyMMdd-HHmmss).ToString()
-$checkLogs = @{}
-$installLogs = @{}
-$logFilePath = "~\.ca\$currentDate\caep.log"
-$requirements = ConvertPSObjectToHashtable (Get-Content ".\requirements.json" | ConvertFrom-Json)
-$checkRequirementsLogFile = "~\.ca\$currentDate\checkLogs.json" 
-$installRequirementsLogfile = "~\.ca\$currentDate\installLogs.json"
-$sortedRequirements = @('WSL', 'Node', 'DotNet', 'Visual Studio', 'Visual Studio Code', 'Git', 'Python', 'NPM', 'Docker', 'Npm Login', 'CAEP')
+  $configuration = ConvertPSObjectToHashtable (Get-Content $pathConfiguration | ConvertFrom-Json)
+  $scarConfig = $configuration["ScarConfig"]
+  $requirements = $configuration["Requirements"]
+    
+  $sortedRequirements = @('WSL', 'Node', 'DotNet', 'Visual Studio', 'Visual Studio Code', 'Git', 'Python', 'NPM', 'Docker', 'Npm Login', 'CAEP')
+  $newSorted = @()
+  foreach ($name in $sortedRequirements) {
+    if ($requirements[$name]["Enable"]) { $newSorted += $name }
+  }
+  $sortedRequirements = $newSorted
+
+  return "Configurazione caricata con successo"
+}
+
+function ConvertPSObjectToHashtable($inputObject) { 
+  process {
+    if (-not $inputObject) { return $inputObject }
+
+    if ($inputObject -is [System.Collections.IEnumerable] -and $inputObject -isnot [string]) {
+      $collection = @(foreach ($object in $inputObject) { ConvertPSObjectToHashtable $object })
+      Write-Output -NoEnumerate $collection
+    }
+    elseif ($inputObject -is [psobject]) {
+      $hash = @{}
+
+      foreach ($property in $inputObject.PSObject.Properties) {
+        $hash[$property.Name] = ConvertPSObjectToHashtable $property.Value
+      }
+
+      $hash
+    }
+    else {
+      $inputObject
+    }
+  }
+}
+
+function invoke-CreateLogs($hashLogs) {
+  foreach ($name in $sortedRequirements) {
+    $hashLogs.Add($name, @{})
+    $hashLogs[$name].Add("Result", "")
+    $hashLogs[$name].Add("Logs", "")
+  }
+}
+
+function invoke-WriteCheckLogs($log) {
+  invoke-WriteLogs $checkLogs $log
+  writeOutputRequirements($name)
+}
+
+function invoke-WriteInstallLogs($log) {
+  invoke-WriteLogs $installLogs $log
+  writeOutputInstall($name)
+}
+
+function invoke-executeCommand($command) {
+  try {
+    $result = (Invoke-Expression $command)
+    return $(if ($result) { $result } else { "Comando eseguito correttamente" }) 
+  }
+  catch {
+    return $false
+  }
+}
+
+function invoke-executeCheckCommand ($command, $errorMessage) {
+  try {
+    $result = (Invoke-Expression $command)
+    return $(if ($result) { $result } else { "Comando eseguito correttamente" })
+  }
+  catch {
+    invoke-WriteCheckLogs $errorMessage 
+    return $false
+  }
+}
+
+function invoke-executeInstallCommand ($command, $errorMessage) {
+  try {
+    $result = (Invoke-Expression $command)
+    return $(if ($result) { $result } else { "Comando eseguito correttamente" })
+  }
+  catch {
+    invoke-WriteInstallLogs $errorMessage 
+    return $false
+  }
+}
+
+function invoke-WriteLogs($hashLogs, $log) {
+  $hashLogs[$name]["Logs"] += ($log + ";")
+}
+
+function invoke-checkProxy {
+  $proxyData = Get-ItemProperty -Path 'Registry::HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings';
+
+  if ($proxyData.ProxyEnable -eq 0 ) { return }
+
+  $proxyDataSplit = $proxyData.ProxyServer -split ':'
+
+  if ($proxyDataSplit.Count -eq 2) {
+    $proxyAddress = $proxyDataSplit[0]
+    $proxyPort = $proxyDataSplit[1]
+  }
+  else {
+    $proxyAddress = $proxyDataSplit[1].replace('/', '')
+    $proxyPort = $proxyDataSplit[2]
+  }
+
+  $requirements["NPM"]["Proxy"] = $requirements["Docker"]["Proxy"] = $(if ((Test-NetConnection -ComputerName $proxyAddress -Port $proxyPort).TcpTestSucceeded) { "OK" } else { 'TCP' })
+  return $requirements["NPM"]["Proxy"]
+}
+
+function invoke-checkVM {
+  return ((Get-CimInstance win32_computersystem).model -in @('VMware Virtual Platform', 'Virtual Machine', 'Macchina Virtuale'))
+}
+
+function invoke-Dependencies($type, $requirement) {
+  $hash = $(if ($type -eq "CHECK") { $checkLogs } else { $installLogs })
+  $dependenciesFailed = ""
+  if (-not ($requirement.Contains("Dependencies"))) { return $true }
+
+  foreach ($dependency in $requirement["Dependencies"]) {
+    if (($hash[$dependency]["Result"]) -and ($hash[$dependency]["Result"] -ne "OK") -and ($hash[$dependency]["Result"] -ne "VER")) {
+      $dependenciesFailed += "\r\n-$dependency"
+    }
+  }
+  
+  if ($dependenciesFailed) {
+    $(if ($type -eq "CHECK") { invoke-WriteCheckLogs "KO a causa di: $dependenciesFailed" } else { invoke-WriteInstallLogs "KO a causa di: $dependenciesFailed" })
+    return $false
+  }
+
+  return $true
+}
+
+function New-CommandString($string) {
+  $stringWithValue = $string
+  do {
+    Invoke-Expression("Set-Variable -name StringWithValue -Value `"$stringWithValue`"")
+  } while ($stringWithValue -like '*$(*)*')
+  return $stringWithValue
+}
+
+function invoke-DownloadScarConfigJson() {
+  if (Test-Path $scarConfigPath) { Remove-Item -Path $scarConfigPath -Force }
+  New-Item -Path $scarConfigPath -Force | Out-Null
+
+  Write-Host "Download $scarConfig in corso"
+  $scarConfigObj = (Invoke-WebRequest -Uri $scarConfig -UseBasicParsing)
+  Set-Content -Path $scarConfigPath -Value $scarConfigObj
+  Write-Host "Download $scarConfig terminato"
+}
+
+function invoke-download($name, $requirement) {
+  try {
+    $subMessage = "$($name) version: $($(if ($requirement["MaxVersion"]) { $requirement["MaxVersion"] } else { "Latest" }))"
+    invoke-WriteInstallLogs "Download $subMessage in corso..."
+    Invoke-RestMethod (New-CommandString $requirement["DownloadLink"]) -OutFile $requirement["DownloadOutfile"]
+    invoke-WriteInstallLogs "Download $subMessage completato."
+    return $true
+  }
+  catch {
+    invoke-WriteInstallLogs "Download fallito"
+    return $false
+  }
+}
+
+function invoke-deleteDownload($name, $requirement) {
+  invoke-WriteInstallLogs "\r\nCancellazione file $($requirement["DownloadOutfile"]) in corso..."
+  if (Test-Path $requirement["DownloadOutFile"]) { Remove-Item ($requirement["DownloadOutFile"].replace('"', '')) }
+  invoke-WriteInstallLogs "Cancellazione file $($requirement["DownloadOutfile"]) completata."
+}
+
+function invoke-check-npm-credential($user, $token) {
+  # Execute the login
+  # http request setting
+  $password = ConvertTo-SecureString $token -AsPlainText -Force
+  $base64AuthInfo = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(("{0}:{1}" -f $user, $token)))
+  try {
+    Invoke-RestMethod -TimeoutSec 1000 `
+      -Uri (New-Object System.Uri "https://devops.codearchitects.com:444/Code%20Architects/_apis/packaging/feeds/ca-npm/npm/packages/%40ca%2Fcli/versions/0.1.1/content") `
+      -Method "get" `
+      -Credential (New-Object System.Management.Automation.PSCredential($user, $password)) `
+      -Headers @{"Accept" = "*/*"; Authorization = ("Basic {0}" -f $base64AuthInfo) } `
+      -ContentType 'application/json'
+    return $true
+  }
+  catch {
+    Write-Host "http request failed, Error: $_.Exception"
+    $errorLabel.Visible = $true
+    return $false
+  }
+}
+
+function invoke-log-registry($packageName, $user, $token) {
+  if (-not (Test-Path $npmrcPath)) {
+    invoke-modal "$npmrcPath non esiste "
+    return
+  }
+
+  if (-not $user) {
+    $credential = invoke-getCredentialsFromNpmrc
+    $user = $credential[0]
+    $token = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($credential[1]))
+  }
+
+  if (-not $user) {
+    invoke-modal "Username non trovato all'interno del .nmprc"
+    return
+  }
+
+  $npmRegistry = "//devops.codearchitects.com:444/Code%20Architects/_packaging/$($packageName)/npm/"
+
+  Add-Content -Path $npmrcPath -Value "`n$($npmRegistry)registry/:username=$($user)
+$($npmRegistry)registry/:_password=$token
+$($npmRegistry)registry/:email=$($user)@codearchitects.com
+$npmRegistry`:username=$($user)
+$npmRegistry`:_password=$token
+$npmRegistry`:email=$($user)@codearchitects.com
+  "
+
+  $npmRegistry = "https://devops.codearchitects.com:444/Code%20Architects/_packaging/ca-npm/npm/registry/"
+  npm config set '@ca:registry' $npmRegistry
+  npm config set '@ca-codegen:registry' $npmRegistry
+}
+
+function invoke-getCredentialsFromNpmrc {  
+  if (-not (Test-Path $npmrcPath)) {
+    Write-Host "$npmrcPath non esiste "
+    return @("", "")
+  }
+
+  $npmrcContent = (Get-Content $npmrcPath)
+  if (-not $npmrcContent) {
+    Write-Host ".npmrc sembra essere vuoto, impossibile recuperare le credenziali"
+    return @("", "")
+  }
+
+  $user = ""
+  $token = ""
+  for ($i = 0; $i -lt $npmrcContent.Count; $i++) {
+    if ($npmrcContent[$i] -match "devops.codearchitects") {
+      $user = ($npmrcContent[$i] -split ":username=")[1] 
+      $token = ([Text.Encoding]::Utf8.GetString([Convert]::FromBase64String((($npmrcContent[$i + 1] -split "password=")[1] -replace '"', ''))))
+      break
+    }
+  }
+
+  return @($user, $token)
+}
+
+function invoke-setCredentialScarfaceConfig($user, $token) {
+  $scarConfigObj = Get-Content $scarConfigPath | ConvertFrom-Json
+  $scarConfigObj.user = $user
+  $scarConfigObj.token = $token
+  $scarConfigObj | ConvertTo-Json | Set-Content -Path $scarConfigPath
+}
+
+
 $red = [System.Drawing.Color]::FromArgb(255, 236, 84, 84)
 $yellow = [System.Drawing.Color]::FromArgb(255, 255, 223, 0)
 $green = [System.Drawing.Color]::FromArgb(255, 13, 173, 141)
 
-$newSorted = @()
-foreach ($name in $sortedRequirements) {
-  if ($requirements[$name]["Enable"]) { $newSorted += $name }
-}
-$sortedRequirements = $newSorted
+$scarConfigPath = "C:\dev\scarface\scarface.config.json"
+$npmrcPath = "~\.npmrc"
+$currentDate = (Get-Date -Format yyyyMMdd-HHmmss).ToString()
+$logFilePath = "~\.ca\$currentDate\caep.log"
+$checkRequirementsLogFile = "~\.ca\$currentDate\checkLogs.json" 
+$installRequirementsLogfile = "~\.ca\$currentDate\installLogs.json"
 
+$global:scarConfig = ""
+$global:requirements = {}
+$global:sortedRequirements = @()
+invoke-loadConfiguration("") | Out-Null
+$checkLogs = @{}
+$installLogs = @{}
 # SIG # Begin signature block
 # MIIkyAYJKoZIhvcNAQcCoIIkuTCCJLUCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUgzprVOBk6eCgOoE207WfUDXR
-# HRWggh6kMIIFOTCCBCGgAwIBAgIQDue4N8WIaRr2ZZle0AzJjDANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUiqI14BMhpy96s9g6jpj57ulE
+# EReggh6kMIIFOTCCBCGgAwIBAgIQDue4N8WIaRr2ZZle0AzJjDANBgkqhkiG9w0B
 # AQsFADB8MQswCQYDVQQGEwJHQjEbMBkGA1UECBMSR3JlYXRlciBNYW5jaGVzdGVy
 # MRAwDgYDVQQHEwdTYWxmb3JkMRgwFgYDVQQKEw9TZWN0aWdvIExpbWl0ZWQxJDAi
 # BgNVBAMTG1NlY3RpZ28gUlNBIENvZGUgU2lnbmluZyBDQTAeFw0yMTAxMjUwMDAw
@@ -194,30 +452,30 @@ $sortedRequirements = $newSorted
 # YWxmb3JkMRgwFgYDVQQKEw9TZWN0aWdvIExpbWl0ZWQxJDAiBgNVBAMTG1NlY3Rp
 # Z28gUlNBIENvZGUgU2lnbmluZyBDQQIQDue4N8WIaRr2ZZle0AzJjDAJBgUrDgMC
 # GgUAoIGEMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwGCisGAQQBgjcCAQsx
-# DjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQxYwgaTM1/Once0WePLZkz
-# 3IFeOzAkBgorBgEEAYI3AgEMMRYwFKASgBAAQwBBACAAVABvAG8AbABzMA0GCSqG
-# SIb3DQEBAQUABIIBAAf1VjQHPjh69bLZw6LXjoQxLC+KoCPGzKo2aGoV/C9gaaGx
-# UFSRo0EEYULVtIMX5U55hw5hwSS3CvKsxAYq0JcqUnipkDxA5v/0V19itvy/TxI+
-# 0W8q9V+0UUEJJplojyYo8BOjbQoOINfF0lgqU2/r9y26VajYZRQg3JNIyIJ7fNrf
-# 98v7HlY99ppBgpeyXz0m+3hsLP+AJTLBlvJzHT8Jnifk15d9lwPdafQM56lhkpEu
-# pr5MwHbjEZTvGuUCWIkmphBeV+QGQjI5I6aDxnIB0JXak9kLqYwWvBavomoE/03Y
-# e6bfugojR/UYTZdwYLVkRworIOQMofpERE4M8ayhggNLMIIDRwYJKoZIhvcNAQkG
+# DjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRTXI1E7JHq9r16Bo/C35Ib
+# 98igkzAkBgorBgEEAYI3AgEMMRYwFKASgBAAQwBBACAAVABvAG8AbABzMA0GCSqG
+# SIb3DQEBAQUABIIBAEQR6C2zjS1aZQmQHKh2MEPeJTUm+bZyKizd098Meo76hEbL
+# Xi1puDpZagBlvzPavpTDxVT8Gp7PZ5IpOVj16yzNwU1p9PpfTyC6Q2ZZxAiHpTkI
+# 2wCW9SHcemapNFCK72dKFAZ+1XgesoxyV6p3agtBCNq8i5OHnfgA4U/csAwoxEkp
+# k8X/dPv2AmhafaWk24sYBMgO6FYH0y+pfAOxaKapW55kltQBU7v9JDbqOtwogbbg
+# s6fkpXeFUpXLF9H9I7uBkxfPEPf9i5y+xRy01mvlUkfG9PKKGhASbZe9u/bMdhhR
+# 0O+HT9+48gW/fUHh2stjD/FmZXJUvP0HeL7N/bqhggNLMIIDRwYJKoZIhvcNAQkG
 # MYIDODCCAzQCAQEwgZEwfTELMAkGA1UEBhMCR0IxGzAZBgNVBAgTEkdyZWF0ZXIg
 # TWFuY2hlc3RlcjEQMA4GA1UEBxMHU2FsZm9yZDEYMBYGA1UEChMPU2VjdGlnbyBM
 # aW1pdGVkMSUwIwYDVQQDExxTZWN0aWdvIFJTQSBUaW1lIFN0YW1waW5nIENBAhA5
 # TCXhfKBtJ6hl4jvZHSLUMA0GCWCGSAFlAwQCAgUAoHkwGAYJKoZIhvcNAQkDMQsG
-# CSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMjMwNTI1MTEwNjU0WjA/BgkqhkiG
-# 9w0BCQQxMgQwv9QBM2TWGKZPyp7NMznZtjFahYBnLHUoLQUC9wOdZlYIwgBM4QfA
-# uK5xgoZ9bpTVMA0GCSqGSIb3DQEBAQUABIICAG93UnMhq0Wdd3WEx4MYWxKJgsXh
-# ThXnMHQZXMOdVW4sSwXdPiXHe5YCDQoXCIv/hc7EUMipOKLyEnFW//4CyBzfopl0
-# bQL6WOJ9CH3mmqTfvR53RnMgI4LDhXyqhbwM4n8/Kv+lgMlkod+fF72Jo7s3bCEB
-# v7c4RTStoS/I7qSJZPipdKrvQ2OG/OgR0VSlXonn8bOq8zsEOp6xLPxibDsOR4bn
-# g6+y5eO8+GFbKI+5u59NO5oJDTtlLN4rmOF0P4LT8eqetP5P88QWHKO0yDDnq1Q4
-# gnz+vSn98tmlPztMOagMrMyrpaZpbf1HKv0lHQBBaitpFmEF24CNFajdAcQRgodU
-# sTwTEToBNzhIHOkcrmdWrmSbsDY36V5sS3SpHWmEeR0c8i7n/mFy1BUfedUaq229
-# 7ByBqnHHCctJ9Kdm6471GPyHWJI6ZoV3U2BNDPSqsWG3T5ncvP2XJy3mmCnX2/3m
-# bz8VdymgUn/PgCiyXF9ag5cJsTzYD+i2VvVhZ8TVX0NWUmi68F/BCiSRMhfwOvc+
-# m0qifMeRhfumDIDliD1ml458LhbZDNQWEukvbOyei5XFnTIJBHNqzBQrM2/c1Pkq
-# ZV6Y5pW3OKbuuzJmbtlnbo5qIkwRwYSG6ECWqu/A+VdN2U50PGKoJ2qX0V/0qcJA
-# nRn8DHIr5vARlB9L
+# CSqGSIb3DQEHATAcBgkqhkiG9w0BCQUxDxcNMjMwNTI1MTEwNzAxWjA/BgkqhkiG
+# 9w0BCQQxMgQwPnd3WbfRHGvsdEwSzinPZWOJOcNrJRZA2zuz1Rbi4tTyNHxl1Nvh
+# iubeHn9DMtvUMA0GCSqGSIb3DQEBAQUABIICADJOlbna5MuIM2MeBGio03UA2MkJ
+# Nc/RpEkyW+wzLVEYTtcdGKRnYIX7XzsvWaokXKoL/jvejH/CiC1JqaJmfRZQhk/2
+# CPEogsQK+LXLn3+WDrAYs92OXIbmUlwtR5KkfkHpyJWCScBVBC1Zs9h9pWevdiMM
+# lqNKoaKHzGjnXGWK00FT/rfXCse3Q5KlcHEYy77Eh1w+v046TeFoPWlEd9F39eim
+# WRaM1CaB9UxW3d3cqGeGcFcCbggjOEsUR+p3bLIy6Lt4n+u3rbgGC/jK0uhglni+
+# VyCcrXv5uq4yNb8eFf5QfDSCXuenjB0FxmjbXoz+GAqGxLXAhaqCpcw/u/waccFU
+# eYH2B8mSdbbi/+h6WCCrZo+719aNwrWjPV8qqKttpCGbQ7+SbE29nE/G7cB8qej3
+# Yi5B+CD3lZnmJAsqen8Yoz39RhCoNy47zCHN/fTdaHCzljLr8W+xNF/2C8+xKGI7
+# wKgnX2uM5Clu4o07CmYTOk1/bk991HlvMr+D8tjss/JaMFMoGT0ofPUHixTwujWK
+# xkRSxQHiMWUmLHnQAGeeyOwOuf7bQFYus/UHDeS4INvkJXk0qJ6Y/JnfCgVIZk2s
+# P4FyPTrd+O82I5ELGrajYmRsUus4TDMZR6Zd2NrUOsDIU1Shxo7I2NdgKWItU0Ja
+# chZTHTpNQHkZGT8f
 # SIG # End signature block

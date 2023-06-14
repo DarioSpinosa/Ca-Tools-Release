@@ -1,0 +1,125 @@
+{
+  "ScarConfig": "https://castorybookbloblwebsite.blob.core.windows.net/scar-configs/scarface.config.json",
+  "Requirements": {
+    "WSL": {
+      "Enable": true,
+      "MinVersion": "18.04",
+      "MaxVersion": "22.04",
+      "Check": "return ./src/requirements/check/wsl.ps1",
+      "Install": "./src/requirements/install/wsl.ps1"
+    },
+    "Node": {
+      "Enable": true,
+      "MaxVersion": "16.13.1",
+      "Check": "return ./src/requirements/check/nodejs.ps1",
+      "DownloadLink": "https://nodejs.org/dist/v$($requirement['MaxVersion'])/node-v$($requirement['MaxVersion'])-x64.msi",
+      "DownloadOutfile": "C:\\dev\\scarface\\download\\Nodejs-x64.msi",
+      "Install": "./src/requirements/install/nodejs.ps1"
+    },
+    "DotNet": {
+      "Enable": true,
+      "Versions": [
+        "5.0.408",
+        "6.0.406"
+      ],
+      "MaxVersion": "5.0.408",
+      "Check": "return ./src/requirements/check/dotnet-core.ps1",
+      "Downloads": [
+        "https://download.visualstudio.microsoft.com/download/pr/14ccbee3-e812-4068-af47-1631444310d1/3b8da657b99d28f1ae754294c9a8f426/dotnet-sdk-5.0.408-win-x64.exe",
+        "https://download.visualstudio.microsoft.com/download/pr/4a725ea4-cd2c-4383-9b63-263156d5f042/d973777b32563272b85617105a06d272/dotnet-sdk-6.0.406-win-x64.exe"
+      ],
+      "DownloadLink": "",
+      "DownloadOutfile": "C:\\dev\\scarface\\download\\Dotnet-x64.exe",
+      "Install": "./src/requirements/install/dotnet-core.ps1"
+    },
+    "Visual Studio": {
+      "Enable": true,
+      "MinVersion": "16",
+      "MaxVersion": "22",
+      "Check": "return ./src/requirements/check/visual-studio.ps1",
+      "DownloadLink": "https://c2rsetup.officeapps.live.com/c2r/downloadVS.aspx?sku=community&channel=Release&version=VS2022&source=VSLandingPage&includeRecommended=true&cid=2030:24c340a4bf2643a5bafacf38d855c919",
+      "DownloadOutfile": "C:\\dev\\scarface\\download\\VisualStudio-22.exe",
+      "Install": "./src/requirements/install/visual-studio.ps1"
+    },
+    "Visual Studio Code": {
+      "Enable": true,
+      "MinVersion": "1.60.0",
+      "Check": "return ./src/requirements/check/vscode.ps1",
+      "DownloadLink": "https://update.code.visualstudio.com/latest/win32-x64-user/stable",
+      "DownloadOutfile": "C:\\dev\\scarface\\download\\VSCode-User-x64.exe",
+      "Install": "./src/requirements/install/vscode.ps1",
+      "Extentions": [
+        "Mikael.Angular-BeastCode",
+        "steoates.autoimport",
+        "HookyQR.beautify",
+        "donjayamanne.githistory",
+        "christian-kohler.path-intellisense",
+        "vscode-icons-team.vscode-icons",
+        "redhat.vscode-yaml",
+        "ms-vscode.vscode-typescript-tslint-plugin",
+        "msjsdiag.debugger-for-chrome",
+        "spmeesseman.vscode-taskexplorer",
+        "Gruntfuggly.triggertaskonsave",
+        "Angular.ng-template"
+      ]
+    },
+    "Git": {
+      "Enable": true,
+      "MinVersion": "2.27.0",
+      "MaxVersion": "2.39.2",
+      "Check": "return ./src/requirements/check/git.ps1",
+      "DownloadLink": "https://github.com/git-for-windows/git/releases/download/v$($requirement['MaxVersion']).windows.1/Git-$($requirement['MaxVersion'])-64-bit.exe",
+      "DownloadOutfile": "C:\\dev\\scarface\\download\\Git-x64.exe",
+      "Install": "./src/requirements/install/git.ps1"
+    },
+    "Python": {
+      "Enable": false,
+      "MinVersion": "3.11.3",
+      "MaxVersion": "3.11.3",
+      "Check": "return ./src/requirements/check/python.ps1",
+      "DownloadLink": "https://www.python.org/ftp/python/$($requirement['MaxVersion'])/python-$($requirement['MaxVersion'])-amd64.exe",
+      "DownloadOutfile": "C:\\dev\\scarface\\download\\python-x64.exe",
+      "Install": "./src/requirements/install/python.ps1"
+    },
+    "NPM": {
+      "Enable": true,
+      "Dependencies": [
+        "Node"
+      ],
+      "MinVersion": "8.0.0",
+      "MaxVersion": "8.1.2",
+      "Check": "return ./src/requirements/check/npm.ps1",
+      "Install": "./src/requirements/install/npm.ps1",
+      "Proxy": "KO"
+    },
+    "Docker": {
+      "Enable": true,
+      "Dependencies": [
+        "WSL"
+      ],
+      "MinVersion": "20.0.0",
+      "Check": "return ./src/requirements/check/docker.ps1",
+      "DownloadLink": "https://desktop.docker.com/win/main/amd64/Docker%20Desktop%20Installer.exe",
+      "DownloadOutfile": "C:\\dev\\scarface\\download\\Docker-x64.exe",
+      "Install": "./src/requirements/install/docker.ps1",
+      "Proxy": "KO"
+    },
+    "Npm Login": {
+      "Enable": true,
+      "Dependencies": [
+        "NPM"
+      ],
+      "Check": "return ./src/requirements/check/npm-login.ps1",
+      "Install": "return ./src/requirements/install/npm-login.ps1"
+    },
+    "CAEP": {
+      "Enable": true,
+      "Dependencies": [
+        "Npm Login"
+      ],
+      "PluginVersion": "0.2.25",
+      "Check": "return ./src/requirements/check/caep.ps1",
+      "Install": "./src/requirements/install/caep.ps1"
+    }
+  }
+}

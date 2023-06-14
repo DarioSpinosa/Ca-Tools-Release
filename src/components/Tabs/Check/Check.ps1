@@ -21,27 +21,9 @@ function Invoke-CheckRequirements {
   $backofficeProjectPath = "C:\dev\scarface\back-office"
   if (Test-Path $backofficeProjectPath) { Remove-Item -Path $backofficeProjectPath -Force -Recurse }
   
-  $override = invoke-DownloadScarConfigJson
-  Invoke-OverrideRequirement $override
+  invoke-DownloadScarConfigJson
   Invoke-ExecuteChecks
   $installButton.Enabled = $true
-}
-
-function Invoke-OverrideRequirement($override) {
-  if (!$override) { return $false }
-
-  Write-Host "Download di $override in corso..."
-  $overrideJson = ConvertPSObjectToHashtable ((Invoke-WebRequest -Uri $override -UseBasicParsing).Content | ConvertFrom-Json )
-  if (!($overrideJson)) {
-    Write-Host "Non è stato trovato alcun override"
-    return
-  }
-
-  foreach ($name in $overrideJson.Keys) {
-    foreach ($property in $overrideJson[$name].Keys) {
-      $requirements[$name][$property] = $overrideJson[$name][$property]
-    }
-  }
 }
 
 function Invoke-ExecuteChecks {

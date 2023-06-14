@@ -214,10 +214,25 @@ $VMPlatformCheck.Location = "660, 210"
 $VMPlatformCheck.SizeMode = "Zoom"
 $VMPlatformCheck.BackColor = "Transparent"
 
-$folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
-$folderDialog.Description = "Seleziona una cartella"
+$optionsTextBox = New-Object System.Windows.Forms.TextBox
+$optionsTextBox.Multiline = $false
+$optionsTextBox.Size = '100, 20'
+$optionsTextBox.Location = '625, 320'
+$optionsTextBox.Font = 'Century Gothic, 15'
+$optionsTextBox.TabStop = $false
 
-$tabStart.controls.AddRange(@($welcomeLabel, $startButton, $horizontalLine, $gridConnections, $gridEnvVar, $infoEnvVarutton, $infoProxyButton, $proxyLabel, $proxyCheck, $infoVmButton, $vmLabel, $vmCheck, $infoWSLButton, $WSLLabel, $WSLCheck, $infoVMPlatformButton, $VMPlatformLabel, $VMPlatformCheck))
+$optionsButton = New-Object System.Windows.Forms.Button
+$optionsButton.BackColor = "#19c5ff"
+$optionsButton.Text = "Ok"
+$optionsButton.Size = "40, 25"
+$optionsButton.Location = "685, 360"
+$optionsButton.Font = 'Century Gothic, 13'
+$optionsButton.ForeColor = "#ffffff"
+$optionsButton.FlatStyle = "Flat"
+$optionsButton.FlatAppearance.BorderSize = 0;
+$optionsButton.FlatAppearance.MouseOverBackColor = "#0463ca"
+
+$tabStart.controls.AddRange(@($welcomeLabel, $startButton, $horizontalLine, $gridConnections, $gridEnvVar, $infoEnvVarutton, $infoProxyButton, $proxyLabel, $proxyCheck, $infoVmButton, $vmLabel, $vmCheck, $infoWSLButton, $WSLLabel, $WSLCheck, $infoVMPlatformButton, $VMPlatformLabel, $VMPlatformCheck, $optionsTextBox, $optionsButton))
 
 #---------------------------------------------------------[Events]--------------------------------------------------------
 
@@ -230,6 +245,8 @@ $infoVMPLatformButton.Add_Click({ infoVMPLatformButton_Click })
 $infoWSLButton.Add_Click({ infoWSLButton_Click })
 $gridConnections.Add_CellContentClick({ gridConnections_CellContentClick })
 $gridEnvVar.Add_Click({ gridEnvVar_Click })
+$optionsButton.Add_Click({ optionsButton_Click })
+
 # SIG # Begin signature block
 # MIIkyAYJKoZIhvcNAQcCoIIkuTCCJLUCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR

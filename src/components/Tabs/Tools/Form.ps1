@@ -34,7 +34,7 @@ $updateTokenButton.FlatAppearance.MouseOverBackColor = "#0463ca"
 
 $logRegistryButton = New-Object System.Windows.Forms.Button
 $logRegistryButton.BackColor = "#19c5ff"
-$logRegistryButton.Text = "Configura progetto"
+$logRegistryButton.Text = "Autenticazione progetto"
 $logRegistryButton.Size = "175, 50"
 $logRegistryButton.Location = "30, 170"
 $logRegistryButton.Font = 'Century Gothic, 13'
