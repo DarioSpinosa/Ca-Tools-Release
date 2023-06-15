@@ -19,7 +19,7 @@ function logRegistryButton_Click {
     if ($row -match "devops.codearchitects") { invoke-log-registry $row.Split("/")[5] }
   }
 
-  $projectNuGetPath = Join-Path $folderSelected "server/NuGet.config"
+  $projectNuGetPath = Join-Path $folderSelected "NuGet.config"
   if (-not (Test-Path $projectNuGetPath)) {
     invoke-modal "nuGet non trovato"
     return

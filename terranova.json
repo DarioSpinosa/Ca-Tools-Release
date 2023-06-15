@@ -86,7 +86,7 @@
       "Dependencies": [
         "Node"
       ],
-      "MinVersion": "8.0.0",
+      "MinVersion": "6.14.16",
       "MaxVersion": "6.14.16",
       "Check": "return ./src/requirements/check/npm.ps1",
       "Install": "./src/requirements/install/npm.ps1",
