@@ -15,10 +15,6 @@ function logRegistryButton_Click {
     return
   }
   
-  foreach ($row in $npmrcContent) {
-    if ($row -match "devops.codearchitects") { invoke-log-registry $row.Split("/")[5] }
-  }
-
   $projectNuGetPath = Join-Path $folderSelected "NuGet.config"
   if (-not (Test-Path $projectNuGetPath)) {
     invoke-modal "nuGet non trovato"
@@ -29,6 +25,10 @@ function logRegistryButton_Click {
   if (-not $nuGetContent) {
     invoke-modal "nuGet sembra essere vuoto"
     return
+  }
+  
+  foreach ($row in $npmrcContent) {
+    if ($row -match "devops.codearchitects") { invoke-log-registry $row.Split("/")[5] }
   }
 
   $credentials = invoke-getCredentialsFromNpmrc

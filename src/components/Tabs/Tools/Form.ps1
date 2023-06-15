@@ -67,9 +67,8 @@ $downloadScarfaceConfig.FlatAppearance.MouseOverBackColor = "#0463ca"
 
 $folderDialog = New-Object System.Windows.Forms.FolderBrowserDialog
 $folderDialog.Description = "Seleziona un progetto"
-$folderDialog.SelectedPath = [Environment]::GetFolderPath("Desktop")
 
-$tabTools.controls.AddRange(@($folderDialog, $logRegistryButton, $updateTokenLabel, $updateTokenText, $updateTokenButton, $repairNpmrcButton, $downloadScarfaceConfig))
+$tabTools.controls.AddRange(@($logRegistryButton, $updateTokenLabel, $updateTokenText, $updateTokenButton, $repairNpmrcButton, $downloadScarfaceConfig))
 
 #---------------------------------------------------------[Events]--------------------------------------------------------
 
