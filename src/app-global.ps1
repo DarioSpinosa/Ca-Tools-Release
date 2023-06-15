@@ -5,22 +5,22 @@ $green = [System.Drawing.Color]::FromArgb(255, 13, 173, 141)
 $scarConfigPath = "C:\dev\scarface\scarface.config.json"
 $npmrcPath = "~\.npmrc"
 $currentDate = (Get-Date -Format yyyyMMdd-HHmmss).ToString()
-$checkLogs = @{}
-$installLogs = @{}
 $logFilePath = "~\.ca\$currentDate\caep.log"
-$configuration = ConvertPSObjectToHashtable (Get-Content ".\configuration\default.json" | ConvertFrom-Json)
-$scarConfig = $configuration["ScarConfig"]
-$requirements = $configuration["Requirements"]
 $checkRequirementsLogFile = "~\.ca\$currentDate\checkLogs.json" 
 $installRequirementsLogfile = "~\.ca\$currentDate\installLogs.json"
-$sortedRequirements = @('WSL', 'Node', 'DotNet', 'Visual Studio', 'Visual Studio Code', 'Git', 'Python', 'NPM', 'Docker', 'Npm Login', 'CAEP')
+$checkLogs = @{}
+$installLogs = @{}
 
+$configurationContent = ConvertPSObjectToHashtable (Get-Content ".\configuration.json" | ConvertFrom-Json)    
+$tempSortedRequirements = @('WSL', 'Node', 'DotNet', 'Visual Studio', 'Visual Studio Code', 'Git', 'Python', 'NPM', 'Docker', 'Login Npm', 'CAEP')
 $newSorted = @()
-foreach ($name in $sortedRequirements) {
-  if ($requirements[$name]["Enable"]) { $newSorted += $name }
+foreach ($name in $tempSortedRequirements) {
+  if ($configurationContent["Requirements"][$name]["Enable"]) { $newSorted += $name }
 }
-$sortedRequirements = $newSorted
 
+$scarConfig = $configurationContent["ScarConfig"]
+$requirements = $configurationContent["Requirements"]
+$sortedRequirements = $newSorted
 # SIG # Begin signature block
 # MIIkyAYJKoZIhvcNAQcCoIIkuTCCJLUCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR

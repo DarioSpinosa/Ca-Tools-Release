@@ -146,10 +146,6 @@ function gridEnvVar_Click {
   Set-Clipboard -Value ($gridEnvVar.CurrentRow.Cells[0].Value)
 }
 
-function optionsButton_Click {
-  invoke-modal (invoke-loadConfiguration("$($optionsTextBox.Text)"))
-}
-
 . .\src\components\Tabs\Start\Form.ps1
 $connections = @{}
 $connections.Add('CA Azure Devops', "https:\\devops.codearchitects.com:444")

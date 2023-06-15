@@ -34,7 +34,7 @@ function logRegistryButton_Click {
   $credentials = invoke-getCredentialsFromNpmrc
   $nodes = ($nuGetContent.SelectNodes("/configuration/packageSources/*") | Where-Object { $_.key -ne 'nuget.org' })
   foreach ($node in $nodes) {
-    dotnet nuget add source "$($node.value)" --valid-authentication-types basic -u "$($credentials[0])" -p "$($credentials[1])" --store-password-in-clear-text -n "$($node.key)"
+    dotnet nuget add source "$($node.value)" --valid-authentication-types basic -u "$($credentials.User)" -p "$($credentials.Token)" --store-password-in-clear-text -n "$($node.key)"
   }
   
   invoke-modal "Login sui registry di progetto completato"
@@ -46,7 +46,7 @@ function updateTokenButton_Click {
     return 
   }
    
-  $user = (invoke-getCredentialsFromNpmrc)[0]
+  $user = (invoke-getCredentialsFromNpmrc).User
   
   if (-not $user) {
     invoke-modal "Username non trovato all'interno del .nmprc"
@@ -92,11 +92,11 @@ function repairNpmrcButton_Click {
 function downloadScarfaceConfig_Click {
   invoke-DownloadScarConfigJson
   $credentials = invoke-getCredentialsFromNpmrc
-  if (-not ($credentials[0] -and $credentials[1])) { 
+  if (-not ($credentials.User -and $credentials.Token)) { 
     invoke-modal "Impossibile completare l'operazione.$([System.Environment]::NewLine).npmrc non trovato o corrotto.$([System.Environment]::NewLine)Rigenerare .nmprc e poi riprovare" 
     return
   }
-  invoke-setCredentialScarfaceConfig $credentials[0] $credentials[1]
+  invoke-setCredentialScarfaceConfig $credentials.User $credentials.Token
   invoke-modal "File scaricato con successo$([System.Environment]::NewLine)Location:$scarConfigPath"
 }
 

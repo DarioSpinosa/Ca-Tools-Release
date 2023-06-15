@@ -1,8 +1,8 @@
 function initialize-login {
   if ($type -eq "START") {
-    $credential = invoke-getCredentialsFromNpmrc
-    $usernameTextBox.Text = $credential[0]
-    $tokenTextBox.Text =  $credential[1]
+    $credentials = invoke-getCredentialsFromNpmrc
+    $usernameTextBox.Text = $credentials.User
+    $tokenTextBox.Text =  $credentials.Token
     if ($usernameTextBox.Text -and $tokenTextBox.Text) { return }
   }
   
@@ -42,7 +42,7 @@ function invoke-login {
     if (!$result) { return $false }
 
     foreach ($item in $result) { invoke-WriteCheckLogs $item }
-    if ($checkLogs["Npm Login"]["Result"].Contains("ERR")) { return $false}
+    if ($checkLogs["Login Npm"]["Result"].Contains("ERR")) { return $false}
   }
   elseif ($type -eq "LOGIN") {
     $result = invoke-executeInstallCommand "npm view @ca/cli 2>&1" "Errore dell'esecuzione di npm view @ca/cli 2>&1"
@@ -51,7 +51,7 @@ function invoke-login {
     if (!$result) { return $false }
 
     foreach ($item in $result) { invoke-WriteInstallLogs $item }
-    if ($installLogs["Npm Login"]["Result"].Contains("ERR")) { return $false}
+    if ($installLogs["Login Npm"]["Result"].Contains("ERR")) { return $false}
   }
 
   return $true

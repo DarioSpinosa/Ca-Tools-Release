@@ -24,30 +24,6 @@ function ConvertPSObjectToHashtable($inputObject) {
   }
 }
 
-function invoke-loadConfiguration($file) {
-  if (-not $file) { $file = "default" }
-  $pathConfiguration = ".\configuration\$($file).json"
-
-  if (-not (Test-Path $pathConfiguration)) { 
-    return "$pathConfiguration non trovato"
-  }
-
-  $configuration = ConvertPSObjectToHashtable (Get-Content $pathConfiguration | ConvertFrom-Json)
-  $tempRequirements = $configuration["Requirements"]
-    
-  $tempSortedRequirements = @('WSL', 'Node', 'DotNet', 'Visual Studio', 'Visual Studio Code', 'Git', 'Python', 'NPM', 'Docker', 'Npm Login', 'CAEP')
-  $newSorted = @()
-  foreach ($name in $tempSortedRequirements) {
-    if ($tempRequirements[$name]["Enable"]) { $newSorted += $name }
-  }
-
-  return [PSCustomObject]@{
-    ScarConfig = $configuration["ScarConfig"]
-    Requirements = $tempRequirements
-    SortedRequirements = $newSorted
-  }
-}
-
 function invoke-CreateLogs($hashLogs) {
   foreach ($name in $sortedRequirements) {
     $hashLogs.Add($name, @{})
@@ -212,9 +188,9 @@ function invoke-log-registry($packageName, $user, $token) {
   }
 
   if (-not $user) {
-    $credential = invoke-getCredentialsFromNpmrc
-    $user = $credential[0]
-    $token = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($credential[1]))
+    $credentials = invoke-getCredentialsFromNpmrc
+    $user = $credentials.User
+    $token = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($credentials.Token))
   }
 
   if (-not $user) {
@@ -238,28 +214,31 @@ $npmRegistry`:email=$($user)@codearchitects.com
 }
 
 function invoke-getCredentialsFromNpmrc {  
+  $credential = [PSCustomObject]@{
+    User = ""
+    Token = ""
+  }
+
   if (-not (Test-Path $npmrcPath)) {
     Write-Host "$npmrcPath non esiste "
-    return @("", "")
+    return $credential
   }
 
   $npmrcContent = (Get-Content $npmrcPath)
   if (-not $npmrcContent) {
     Write-Host ".npmrc sembra essere vuoto, impossibile recuperare le credenziali"
-    return @("", "")
+    return $credential
   }
 
-  $user = ""
-  $token = ""
   for ($i = 0; $i -lt $npmrcContent.Count; $i++) {
     if ($npmrcContent[$i] -match "devops.codearchitects") {
-      $user = ($npmrcContent[$i] -split ":username=")[1] 
-      $token = ([Text.Encoding]::Utf8.GetString([Convert]::FromBase64String((($npmrcContent[$i + 1] -split "password=")[1] -replace '"', ''))))
+      $credential.User = ($npmrcContent[$i] -split ":username=")[1] 
+      $credential.Token = ([Text.Encoding]::Utf8.GetString([Convert]::FromBase64String((($npmrcContent[$i + 1] -split "password=")[1] -replace '"', ''))))
       break
     }
   }
 
-  return @($user, $token)
+  return $credential
 }
 
 function invoke-setCredentialScarfaceConfig($user, $token) {

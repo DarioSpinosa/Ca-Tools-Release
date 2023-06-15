@@ -1,8 +1,8 @@
 {
-  "ScarConfig": "https://castorybookbloblwebsite.blob.core.windows.net/scar-configs/terranova.scarface.config.json",
+  "ScarConfig": "https://castorybookbloblwebsite.blob.core.windows.net/scar-configs/scarface.config.json",
   "Requirements": {
     "WSL": {
-      "Enable": false,
+      "Enable": true,
       "MinVersion": "18.04",
       "MaxVersion": "22.04",
       "Check": "return ./src/requirements/check/wsl.ps1",
@@ -87,13 +87,13 @@
         "Node"
       ],
       "MinVersion": "8.0.0",
-      "MaxVersion": "6.14.16",
+      "MaxVersion": "8.1.2",
       "Check": "return ./src/requirements/check/npm.ps1",
       "Install": "./src/requirements/install/npm.ps1",
       "Proxy": "KO"
     },
     "Docker": {
-      "Enable": false,
+      "Enable": true,
       "Dependencies": [
         "WSL"
       ],
@@ -104,7 +104,7 @@
       "Install": "./src/requirements/install/docker.ps1",
       "Proxy": "KO"
     },
-    "Npm Login": {
+    "Login Npm": {
       "Enable": true,
       "Dependencies": [
         "NPM"
@@ -115,7 +115,7 @@
     "CAEP": {
       "Enable": true,
       "Dependencies": [
-        "Npm Login"
+        "Login Npm"
       ],
       "PluginVersion": "0.2.25",
       "Check": "return ./src/requirements/check/caep.ps1",
