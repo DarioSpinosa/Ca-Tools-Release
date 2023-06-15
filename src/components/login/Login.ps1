@@ -34,6 +34,7 @@ function invoke-login {
   }
 
   invoke-log-registry "ca-npm" $usernameTextBox.text ([Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($tokenTextBox.text)))
+  invoke-log-registry "ca-appmodeler-npm" $usernameTextBox.text ([Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($tokenTextBox.text)))
   
   if ($type -eq "START") {
     $result = invoke-executeCheckCommand "npm view @ca/cli 2>&1" "Errore dell'esecuzione di npm view @ca/cli 2>&1"
